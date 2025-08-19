@@ -1,98 +1,105 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Oinkvest API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Bem-vindo ao repositório do backend da Oinkvest, uma API robusta construída com Nest.js e TypeScript. Este serviço é o coração da nossa aplicação, responsável pela lógica de negócio, persistência de dados e autenticação.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Como Executar Localmente (Ambiente de Desenvolvimento)
 
-## Description
+Siga estes passos para configurar e executar a API em sua máquina.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Pré-requisitos
 
-## Project setup
+Certifique-se de que você tem as seguintes ferramentas instaladas:
 
-```bash
-$ npm install
-```
+  * **Node.js** (versão LTS recomendada)
+  * **npm** (instalado com o Node.js)
+  * **PostgreSQL** (ou a ferramenta de sua escolha para rodar o banco de dados)
 
-## Compile and run the project
+### Instalação
 
-```bash
-# development
-$ npm run start
+1.  Clone este repositório para sua máquina local.
 
-# watch mode
-$ npm run start:dev
+    ```bash
+    git clone https://github.com/oinkvest/oinkvest-api.git
+    cd oinkvest-api
+    ```
 
-# production mode
-$ npm run start:prod
-```
+2.  Instale todas as dependências do projeto.
 
-## Run tests
+    ```bash
+    npm install
+    ```
+
+3.  Configure suas variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto, usando o `.env.example` como modelo.
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Ajuste as variáveis de conexão com o banco de dados conforme sua configuração local.
+
+### NestJS CLI (Opcional, mas Recomendado)
+
+Se você precisa usar o NestJS CLI para gerar novos arquivos (como módulos, serviços ou controladores), você deve instalá-lo globalmente.
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install -g @nestjs/cli
 ```
 
-## Deployment
+Após a instalação, você pode executar comandos como `nest generate service users` para gerar um novo serviço, o que pode agilizar o desenvolvimento.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Executando a Aplicação
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Para iniciar o servidor de desenvolvimento e rodar a aplicação em modo de "watch" (observando alterações de arquivo), execute o comando:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+A API estará disponível em `http://localhost:3001`.
 
-## Resources
+-----
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🐳 Executando com Docker
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Se você prefere um ambiente de desenvolvimento isolado ou quer criar a imagem para deploy, siga as instruções abaixo.
 
-## Support
+### Pré-requisitos
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+  * **Docker** e **Docker Compose** instalados.
 
-## Stay in touch
+### 1\. Criando a Imagem Docker
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+A partir da raiz deste repositório, execute o seguinte comando para construir a imagem Docker. A flag `-t` cria uma "tag" (nome) para a imagem, facilitando a sua identificação.
 
-## License
+```bash
+docker build -t oinkvest-api:latest .
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 2\. Executando o Contêiner
+
+Para rodar o contêiner a partir da imagem que você acabou de criar, use o comando `docker run`. Mapeamos a porta 3001 do contêiner para a porta 3001 da sua máquina local.
+
+```bash
+docker run -p 3001:3001 --name oinkvest-api-container oinkvest-api:latest
+```
+
+A aplicação agora está rodando em um contêiner Docker, acessível em `http://localhost:3001`. Você pode verificar o status do contêiner com `docker ps`.
+
+### Comandos Úteis do Docker
+
+  * **Parar o contêiner:**
+    ```bash
+    docker stop oinkvest-api-container
+    ```
+  * **Remover o contêiner:**
+    ```bash
+    docker rm oinkvest-api-container
+    ```
+  * **Ver os logs:**
+    ```bash
+    docker logs oinkvest-api-container
+    ```
+
+## 📚 Documentação da API
+
+Acesse a documentação da API em tempo real (Swagger) em `http://localhost:3001/api`. (ainda não implementado)
