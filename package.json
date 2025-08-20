@@ -1,6 +1,6 @@
 {
   "name": "oinkvest-api",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "author": "",
   "private": true,
@@ -24,6 +24,7 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "^6.14.0",
     "axios": "^1.11.0",
     "reflect-metadata": "^0.2.2",
