@@ -2,7 +2,7 @@
 
 Bem-vindo ao repositório do backend da Oinkvest, uma API robusta construída com Nest.js e TypeScript. Este serviço é o coração da nossa aplicação, responsável pela lógica de negócio, persistência de dados e autenticação.
 
-## ⚙️: Como Executar Localmente (Ambiente de Desenvolvimento)
+## ⚙️ Como Executar Localmente (Ambiente de Desenvolvimento)
 
 Siga estes passos para configurar e executar a API em sua máquina.
 
@@ -59,7 +59,7 @@ A API estará disponível em `http://localhost:3001`.
 
 -----
 
-## :box: Executando com Docker
+## 🐳 Executando com Docker
 
 Se você prefere um ambiente de desenvolvimento isolado ou quer criar a imagem para deploy, siga as instruções abaixo.
 
@@ -102,4 +102,4 @@ A aplicação agora está rodando em um contêiner Docker, acessível em `http:/
 
 ## 📚 Documentação da API
 
-Acesse a documentação da API em tempo real (Swagger) em `http://localhost:3001/api`. (ainda não implementado)
+Acesse a documentação da API em tempo real (Swagger) em `http://localhost:3001/api`.
