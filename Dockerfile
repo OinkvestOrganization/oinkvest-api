@@ -1,5 +1,5 @@
 # Stage 1: Imagem de build
-FROM node:18-alpine AS build
+FROM node:22.18 AS build
 
 # Define o diretório de trabalho
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Imagem de produção
-FROM node:18-alpine AS production
+FROM node:22.18 AS production
 
 # Define o diretório de trabalho
 WORKDIR /app
