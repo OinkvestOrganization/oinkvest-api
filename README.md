@@ -2,9 +2,9 @@
 
 Bem-vindo ao repositório do backend da Oinkvest, uma API robusta construída com Nest.js e TypeScript. Este serviço é o coração da nossa aplicação, responsável pela lógica de negócio, persistência de dados e autenticação.
 
-## ⚙️ Como Executar Localmente (Ambiente de Desenvolvimento)
+## 🚀 Como Executar Localmente (Sem Docker)
 
-Siga estes passos para configurar e executar a API em sua máquina.
+Siga estes passos para configurar e executar a API diretamente em sua máquina.
 
 ### Pré-requisitos
 
@@ -23,9 +23,13 @@ Certifique-se de que você tem as seguintes ferramentas instaladas:
     cd oinkvest-api
     ```
 
-2.  Instale todas as dependências do projeto.
+2.  Limpeza e instalação de dependências:
+    Caso você já tenha executado o projeto com o Docker, é recomendável limpar os arquivos gerados.
 
     ```bash
+    # Apaga a pasta de módulos, o diretório de build e logs
+    sudo rm -rf node_modules dist npm-debug.log* yarn-debug.log*
+    # Instala todas as dependências do projeto
     npm install
     ```
 
@@ -59,45 +63,49 @@ A API estará disponível em `http://localhost:3001`.
 
 -----
 
-## 🐳 Executando com Docker
+## 🐳 Como Executar com Docker Compose
 
-Se você prefere um ambiente de desenvolvimento isolado ou quer criar a imagem para deploy, siga as instruções abaixo.
+Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um setup rápido, use o arquivo `docker-compose.yml` no repositório **`oinkvest-devops`**.
 
 ### Pré-requisitos
 
   * **Docker** e **Docker Compose** instalados.
+  * Os repositórios **`oinkvest-api`** e **`oinkvest-devops`** devem estar clonados no mesmo diretório pai.
 
-### 1\. Criando a Imagem Docker
+### Passos
 
-A partir da raiz deste repositório, execute o seguinte comando para construir a imagem Docker. A flag `-t` cria uma "tag" (nome) para a imagem, facilitando a sua identificação.
+1.  Navegue para o repositório de infraestrutura e, em seguida, para a pasta `dev`:
 
-```bash
-docker build -t oinkvest-api:latest .
-```
-
-### 2\. Executando o Contêiner
-
-Para rodar o contêiner a partir da imagem que você acabou de criar, use o comando `docker run`. Mapeamos a porta 3001 do contêiner para a porta 3001 da sua máquina local.
-
-```bash
-docker run -p 3001:3001 --name oinkvest-api-container oinkvest-api:latest
-```
-
-A aplicação agora está rodando em um contêiner Docker, acessível em `http://localhost:3001`. Você pode verificar o status do contêiner com `docker ps`.
-
-### Comandos Úteis do Docker
-
-  * **Parar o contêiner:**
     ```bash
-    docker stop oinkvest-api-container
+    cd ../oinkvest-infra/dev
     ```
-  * **Remover o contêiner:**
+
+2.  Certifique-se de que o arquivo de variáveis de ambiente **`.env.dev`** está configurado.
+
+3.  Inicie os serviços com o Docker Compose. Isso irá construir as imagens a partir do `Dockerfile` do seu projeto e iniciar a API em modo de hot-reload.
+
     ```bash
-    docker rm oinkvest-api-container
+    docker compose up --build -d
     ```
-  * **Ver os logs:**
+
+4.  Para ver os logs e depurar a aplicação, use o seguinte comando:
+
     ```bash
-    docker logs oinkvest-api-container
+    docker compose logs -f
+    ```
+
+### Comandos Úteis
+
+  * **Parar e remover os contêineres:**
+
+    ```bash
+    docker compose down
+    ```
+
+  * **Verificar o status dos contêineres:**
+
+    ```bash
+    docker ps
     ```
 
 ## 📚 Documentação da API
