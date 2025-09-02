@@ -10,20 +10,22 @@ Siga estes passos para configurar e executar a API diretamente em sua máquina.
 
 Certifique-se de que você tem as seguintes ferramentas instaladas:
 
-  * **Node.js** (versão LTS recomendada)
-  * **npm** (instalado com o Node.js)
-  * **PostgreSQL** (ou a ferramenta de sua escolha para rodar o banco de dados)
+* **Node.js** (versão LTS recomendada)
+
+* **npm** (instalado com o Node.js)
+
+* **pgadmin, dbeaver** (ou a ferramenta de sua escolha para rodar o banco de dados)
 
 ### Instalação
 
-1.  Clone este repositório para sua máquina local.
+1. Clone este repositório para sua máquina local.
 
     ```bash
     git clone https://github.com/oinkvest/oinkvest-api.git
     cd oinkvest-api
     ```
 
-2.  Limpeza e instalação de dependências:
+2. Limpeza e instalação de dependências:
     Caso você já tenha executado o projeto com o Docker, é recomendável limpar os arquivos gerados.
 
     ```bash
@@ -33,7 +35,7 @@ Certifique-se de que você tem as seguintes ferramentas instaladas:
     npm install
     ```
 
-3.  Configure suas variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto, usando o `.env.example` como modelo.
+3. Configure suas variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto, usando o `.env.example` como modelo.
 
     ```bash
     cp .env.example .env
@@ -67,47 +69,58 @@ A API estará disponível em `http://localhost:3001`.
 
 Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um setup rápido, use o arquivo `docker-compose.yml` no repositório **`oinkvest-devops`**.
 
-### Pré-requisitos
+### Pré-requisitos de desenvolvimento
 
-  * **Docker** e **Docker Compose** instalados.
-  * Os repositórios **`oinkvest-api`** e **`oinkvest-devops`** devem estar clonados no mesmo diretório pai.
+* **Docker** e **Docker Compose** instalados.
 
 ### Passos
 
-1.  Navegue para o repositório de infraestrutura e, em seguida, para a pasta `dev`:
-
+1. Certifique-se de que o arquivo de variáveis de ambiente **`.env`** está configurado conforme o exemplo em `.env.example`.
+  
     ```bash
-    cd ../oinkvest-infra/dev
+    cp .env.example .env
     ```
 
-2.  Certifique-se de que o arquivo de variáveis de ambiente **`.env.dev`** está configurado.
-
-3.  Inicie os serviços com o Docker Compose. Isso irá construir as imagens a partir do `Dockerfile` do seu projeto e iniciar a API em modo de hot-reload.
+2. Inicie os serviços com o Docker Compose. Isso irá construir as imagens a partir do `Dockerfile` do seu projeto e iniciar a API em modo de hot-reload.
 
     ```bash
-    docker compose up --build -d
+    docker compose up -f docker-compose.dev.yml --build -d
     ```
 
-4.  Para ver os logs e depurar a aplicação, use o seguinte comando:
+    Para ver os logs e depurar a aplicação, use o seguinte comando:
 
     ```bash
-    docker compose logs -f
+    docker compose logs -f docker-compose.dev.yml -f
+    ```
+
+3. Caso seja feita alguma alteração no `schema.prisma` que mude as migrations no banco é preciso executar `npm run db:migrate` e `npm run prisma:generate` tanto localmente quanto dentro do container:
+
+    ```bash
+    # Local
+    npm run db:migrate
+
+    npm run prisma:generate
+
+    # Dentro do container
+    docker-compose -f docker-compose.dev.yml exec app run db:migrate
+
+    docker-compose -f docker-compose.dev.yml exec app run prisma:generate
     ```
 
 ### Comandos Úteis
 
-  * **Parar e remover os contêineres:**
+* **Parar e remover os contêineres:**
 
-    ```bash
-    docker compose down
-    ```
+  ```bash
+  docker compose down
+  ```
 
-  * **Verificar o status dos contêineres:**
+* **Verificar o status dos contêineres:**
 
-    ```bash
-    docker ps
-    ```
+  ```bash
+  docker ps
+  ```
 
 ## 📚 Documentação da API
 
-Acesse a documentação da API em tempo real (Swagger) em `http://localhost:3001/api`.
+Acesse a documentação da API em tempo real (Swagger) em `http://localhost:3001/swagger`.
