@@ -14,10 +14,21 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  nome        String
-  email       String
-  senha       String
-  dataCriacao DateTime @default(now())
-  status      Boolean  @default(true)
+  id                 String              @id @default(uuid())
+  nome               String
+  email              String
+  senha              String
+  dataCriacao        DateTime            @default(now())
+  emailVerificado    DateTime?
+  verificationTokens VerificationToken[]
+
+  status Boolean @default(true)
+}
+
+model VerificationToken {
+  id      String   @id @default(cuid())
+  token   String   @unique
+  expires DateTime
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

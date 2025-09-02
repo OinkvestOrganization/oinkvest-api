@@ -9,6 +9,7 @@ async function bootstrap() {
     .setTitle('Oinkvest API')
     .setDescription('Guia de rotas da API Oinkvest')
     .setContact('Oinkvest', 'https://oinkvest.com.br', 'oinkvest@gmail.com')
+    .addBearerAuth()
     .setOpenAPIVersion('3.1.0')
     .setVersion('0.1.0')
     .build();
