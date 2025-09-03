@@ -49,7 +49,7 @@ export class UserService {
       throw new NotFoundException(`Usuário com ID "${id}" não encontrado.`);
     }
 
-    if (user.status == false) {
+    if (user.status === false) {
       throw new ConflictException(`Usuário com ID "${id}" está inativo.`);
     }
 

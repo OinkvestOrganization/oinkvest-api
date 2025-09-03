@@ -1,8 +1,16 @@
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  HttpCode,
+  HttpStatus,
+  Res,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ApiBody } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
+import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -18,11 +26,23 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @ApiBody({
-    type: LoginDto,
-  })
+  @ApiBody({ type: LoginDto })
   @Post('login')
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto.email, loginDto.senha);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response, // Injete o objeto Response
+  ) {
+    const result = await this.authService.login(loginDto.email, loginDto.senha);
+
+    // Define o cookie
+    response.cookie('access_token', result.access_token, {
+      httpOnly: true, // O cookie não pode ser acessado via JavaScript
+      secure: process.env.NODE_ENV === 'production', // Use https em produção
+      sameSite: 'strict', // Proteção CSRF
+      maxAge: 3600 * 1000, // 1 hora em milissegundos
+    });
+
+    // Você pode retornar uma mensagem de sucesso ou dados do usuário
+    return { message: 'Login bem-sucedido' };
   }
 }

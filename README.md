@@ -114,7 +114,7 @@ Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um 
   docker compose -f docker-compose.dev.yml down
   ```
 
-* **Verificar o status dos contêineres:**
+* **Verificar o status dos contêineres:**1
 
   ```bash
   docker ps
