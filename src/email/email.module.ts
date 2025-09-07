@@ -6,7 +6,7 @@ import { EmailService } from './email.service';
   imports: [
     MailerModule.forRoot({
       transport: {
-        host: process.env.MAIL_HOST,
+        host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
         port: Number(process.env.SMTP_PORT ?? 587),
         auth: {
           user: process.env.SMTP_USER,

@@ -103,7 +103,7 @@ export class UserService {
     if (!userExists) {
       throw new NotFoundException(`Usuário com ID "${user}" não encontrado.`);
     }
-    const userActivated = await this.prisma.user.update({where: {id: user}, data: {emailVerificado: new Date(Date.now()).toLocaleDateString()}});
+    const userActivated = await this.prisma.user.update({where: {id: user}, data: {emailVerificado: new Date(Date.now()).toISOString()}});
     return this.excluirSenha(userActivated);
   }
 }
