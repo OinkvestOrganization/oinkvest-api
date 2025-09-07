@@ -96,15 +96,14 @@ Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um 
 3. Caso seja feita alguma alteração no `schema.prisma` que mude as migrations no banco é preciso executar `npm run db:migrate` e `npm run prisma:generate` tanto localmente quanto dentro do container:
 
     ```bash
+    # Dentro do container
+    docker-compose -f docker-compose.dev.yml exec app npm run db:migrate
+
+    docker-compose -f docker-compose.dev.yml exec app npm run prisma:generate
+
     # Local
     npm run db:migrate
-
     npm run prisma:generate
-
-    # Dentro do container
-    docker-compose -f docker-compose.dev.yml exec app run db:migrate
-
-    docker-compose -f docker-compose.dev.yml exec app run prisma:generate
     ```
 
 ### Comandos Úteis
@@ -112,10 +111,10 @@ Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um 
 * **Parar e remover os contêineres:**
 
   ```bash
-  docker compose down
+  docker compose -f docker-compose.dev.yml down
   ```
 
-* **Verificar o status dos contêineres:**
+* **Verificar o status dos contêineres:**1
 
   ```bash
   docker ps

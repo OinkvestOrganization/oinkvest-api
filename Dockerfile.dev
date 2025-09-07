@@ -13,7 +13,7 @@ RUN npm install
 # Copia o restante do código
 COPY . .
 
-RUN npx prisma generate
+RUN npm run prisma:generate
 
 # Expõe a porta que o Nest.js usará (padrão 3001)
 EXPOSE 3001

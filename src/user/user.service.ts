@@ -21,7 +21,7 @@ export class UserService {
   }
 
   async createUser(createUserDto: CreateUserDto) {
-    const emailExists = await this.prisma.user.findUnique({
+    const emailExists = await this.prisma.user.findFirst({
       where: { email: createUserDto.email },
     });
     if (emailExists) {
@@ -49,15 +49,22 @@ export class UserService {
       throw new NotFoundException(`Usuário com ID "${id}" não encontrado.`);
     }
 
-    if (user.status == false) {
+    if (user.status === false) {
       throw new ConflictException(`Usuário com ID "${id}" está inativo.`);
     }
 
     return this.excluirSenha(user);
   }
 
-  async findByEmail(email: string) {
+  async findById(id: string) {
     const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    return user;
+  }
+
+  async findByEmail(email: string) {
+    const user = await this.prisma.user.findFirst({
       where: { email: email },
     });
     if (!user) {

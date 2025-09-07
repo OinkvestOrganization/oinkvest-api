@@ -1,5 +1,5 @@
 # Stage 1: Imagem de build
-FROM node:22.18 AS build
+FROM node:22.19 AS build
 
 # Define o diretório de trabalho
 WORKDIR /app
