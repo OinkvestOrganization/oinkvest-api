@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Res,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -44,5 +45,11 @@ export class AuthController {
 
     // Você pode retornar uma mensagem de sucesso ou dados do usuário
     return { message: 'Login bem-sucedido' };
+  }
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post('verify')
+  verify(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 }

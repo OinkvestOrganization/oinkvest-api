@@ -3,19 +3,40 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
+import { EmailService } from '@/email/email.service';
+import { randomUUID, UUID } from 'crypto';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
     private jwtService: JwtService,
+    private emailService: EmailService,
+    private prisma: PrismaService,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.usersService.createUser(createUserDto);
-    const payload = { sub: user.id, email: user.email };
+    const token = randomUUID();
+    const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
+
+    const verificationToken = await this.prisma.verificationToken.create({
+      data: {
+        token: token,
+        expires: expiresIn,
+        userId: user.id,
+      },
+    });
+
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken.token,
+      user.nome,
+    );
     return {
-      access_token: this.jwtService.sign(payload),
+      message:
+        'Cadastro realizado com sucesso. Verifique seu e-mail para ativar sua conta.',
     };
   }
 
@@ -33,9 +54,28 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
+    if (!user.emailVerificado) {
+      throw new UnauthorizedException('Conta ainda não verificada. Por favor verifique seu e-mail.');
+    }
+
     const payload = { sub: user.id, email: user.email };
+
     return {
       access_token: this.jwtService.sign(payload),
     };
   }
+
+  async verifyEmail(token: string) {
+    const record = await this.prisma.verificationToken.findUnique({ where: { token: token} });
+      if (!record) {
+        throw new UnauthorizedException('Token inválido.');
+      }
+      if (record.expires.getTime() < Date.now()) {
+        await this.prisma.verificationToken.delete({ where: { id: record.id } });
+        await this.prisma.user.delete({ where: { id: record.userId } });
+        throw new UnauthorizedException('Token expirado. Realize novo cadastro.');
+      }
+      await this.usersService.activateUser(record.userId);
+      return { message: 'Email verificado com sucesso.' };
+    }
 }

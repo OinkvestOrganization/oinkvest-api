@@ -21,7 +21,6 @@ model User {
   dataCriacao        DateTime            @default(now())
   emailVerificado    DateTime?
   verificationTokens VerificationToken[]
-
   status Boolean @default(true)
 }
 
@@ -32,3 +31,4 @@ model VerificationToken {
   userId  String
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
