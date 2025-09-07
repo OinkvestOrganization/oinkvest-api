@@ -21,7 +21,6 @@ model User {
   dataCriacao        DateTime            @default(now())
   emailVerificado    DateTime?
   verificationTokens VerificationToken[]
-
   status Boolean @default(true)
 }
 

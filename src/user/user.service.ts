@@ -65,7 +65,7 @@ export class UserService {
 
   async findByEmail(email: string) {
     const user = await this.prisma.user.findFirst({
-      where: { email: email },
+      where: { email: email, status: true },
     });
     if (!user) {
       throw new NotFoundException(
@@ -93,8 +93,17 @@ export class UserService {
 
     const user = await this.prisma.user.update({
       where: { id },
-      data: { status: false, email: '' },
+      data: { status: false },
     });
     return this.excluirSenha(user);
+  }
+
+  async activateUser (user: string) {
+    const userExists = await this.prisma.user.findUnique({where: {id: user}});
+    if (!userExists) {
+      throw new NotFoundException(`Usuário com ID "${user}" não encontrado.`);
+    }
+    const userActivated = await this.prisma.user.update({where: {id: user}, data: {emailVerificado: new Date(Date.now()).toLocaleDateString()}});
+    return this.excluirSenha(userActivated);
   }
 }
