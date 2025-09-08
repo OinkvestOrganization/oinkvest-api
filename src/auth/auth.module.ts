@@ -15,7 +15,7 @@ import { EmailModule } from '@/email/email.module';
       secret: process.env.JWT_SECRET || 'SECRET',
       signOptions: { expiresIn: '60m' }, // Token expira em 60 minutos
     }),
-    EmailModule
+    EmailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

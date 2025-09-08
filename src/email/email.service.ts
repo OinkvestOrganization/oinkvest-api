@@ -24,7 +24,7 @@ export class EmailService {
         <small>Se você não solicitou este cadastro, ignore este e-mail.</small>
       </div>
     `;
-    
+
     return await this.mailer.sendMail({
       to,
       subject,

@@ -1,10 +1,14 @@
 import { UserService } from 'src/user/user.service';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { EmailService } from '@/email/email.service';
-import { randomUUID, UUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
@@ -55,7 +59,9 @@ export class AuthService {
     }
 
     if (!user.emailVerificado) {
-      throw new UnauthorizedException('Conta ainda não verificada. Por favor verifique seu e-mail.');
+      throw new ConflictException(
+        'Conta ainda não verificada. Por favor verifique seu e-mail.',
+      );
     }
 
     const payload = { sub: user.id, email: user.email };
@@ -66,16 +72,18 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
-    const record = await this.prisma.verificationToken.findUnique({ where: { token: token} });
-      if (!record) {
-        throw new UnauthorizedException('Token inválido.');
-      }
-      if (record.expires.getTime() < Date.now()) {
-        await this.prisma.verificationToken.delete({ where: { id: record.id } });
-        await this.prisma.user.delete({ where: { id: record.userId } });
-        throw new UnauthorizedException('Token expirado. Realize novo cadastro.');
-      }
-      await this.usersService.activateUser(record.userId);
-      return { message: 'Email verificado com sucesso.' };
+    const record = await this.prisma.verificationToken.findUnique({
+      where: { token: token },
+    });
+    if (!record) {
+      throw new UnauthorizedException('Token inválido.');
     }
+    if (record.expires.getTime() < Date.now()) {
+      await this.prisma.verificationToken.delete({ where: { id: record.id } });
+      await this.prisma.user.delete({ where: { id: record.userId } });
+      throw new UnauthorizedException('Token expirado. Realize novo cadastro.');
+    }
+    await this.usersService.activateUser(record.userId);
+    return { message: 'Email verificado com sucesso.' };
+  }
 }
