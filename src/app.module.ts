@@ -9,12 +9,14 @@ import { ConfigModule } from '@nestjs/config';
 import { WsServerGateway } from './ws-server/ws-server.gateway';
 import { WsServerService } from './ws-server/ws-server.service';
 import { WsServerModule } from './ws-server/ws-server.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     UserModule,
     AuthModule,
