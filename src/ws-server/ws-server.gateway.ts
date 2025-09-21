@@ -10,64 +10,38 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { OnEvent } from '@nestjs/event-emitter';
-import KlineSubscriptionDto from './dto/klineSubscription.dto';
 import { WsServerService } from './ws-server.service';
+import KlineSubscriptionDto from './dto/klineSubscription.dto';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class WsServerGateway
-  implements OnGatewayConnection, OnGatewayInit, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
 
   private readonly logger: Logger = new Logger(WsServerGateway.name);
 
-  private clientSubscriptions: Map<string, Set<string>> = new Map();
-
   constructor(private readonly wsServerService: WsServerService) {}
 
-  afterInit() {
-    this.logger.log('WebSocket server initialized');
+  afterInit(server: Server) {
+    this.wsServerService.setServer(server);
+    this.logger.log('WebSocket server initialized and passed to service');
   }
 
-  handleConnection(client: any) {
-    this.logger.log(`Client connected: ${client.id}`);
-    this.clientSubscriptions.set(client.id, new Set());
+  handleConnection(client: Socket) {
+    this.wsServerService.registerClient(client);
   }
 
-  handleDisconnect(client: any) {
-    this.logger.log(`Client disconnected: ${client.id}`);
-    this.clientSubscriptions.delete(client.id);
-  }
-
-  @OnEvent('klines')
-  handleKlinesEvent(payload: {
-    symbol: string;
-    interval: string;
-    data: string;
-  }) {
-    this.logger.log(
-      `Klines event received: ${payload.symbol}, ${payload.interval}, ${payload.data}`,
-    );
-    const { symbol, interval, data } = payload;
-    this.server.emit('klines', { symbol, interval, data });
+  handleDisconnect(client: Socket) {
+    this.wsServerService.deregisterClient(client);
   }
 
   @SubscribeMessage('klines')
   handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: KlineSubscriptionDto,
+    @MessageBody() data: KlineSubscriptionDto | string,
   ) {
-    const { symbol, interval } = JSON.parse(JSON.stringify(data));
-    this.logger.log(
-      `Client ${client.id} subscribed to ${symbol} at ${interval}`,
-    );
-    const clientSubs = this.clientSubscriptions.get(client.id);
-    if (clientSubs) {
-      clientSubs.add(`${symbol}-${interval}`);
-    }
-    this.wsServerService.subcribeToKlines(client.id, symbol, interval);
-    return { event: 'klines', data: `Subscribed to ${symbol} at ${interval}` };
+    this.wsServerService.handleKlineSubscription(client, data);
   }
 }
