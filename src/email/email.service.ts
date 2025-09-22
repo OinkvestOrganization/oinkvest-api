@@ -5,7 +5,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 export class EmailService {
   constructor(private readonly mailer: MailerService) {}
   async sendVerificationEmail(to: string, token: string, nome?: string) {
-    const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3001'}/auth/verify?token=${encodeURIComponent(token)}`;
+    const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${encodeURIComponent(token)}`;
 
     const subject = 'Confirme seu e-mail';
     const html = `

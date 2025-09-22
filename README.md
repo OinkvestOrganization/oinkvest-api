@@ -84,7 +84,7 @@ Esta seção é para colaboradores que preferem usar o ambiente Docker. Para um 
 2. Inicie os serviços com o Docker Compose. Isso irá construir as imagens a partir do `Dockerfile` do seu projeto e iniciar a API em modo de hot-reload.
 
     ```bash
-    docker compose up -f docker-compose.dev.yml --build -d
+    docker compose -f docker-compose.dev.yml up --build -d
     ```
 
     Para ver os logs e depurar a aplicação, use o seguinte comando:
