@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { EmailModule } from './email/email.module';
 import { ConfigModule } from '@nestjs/config';
+import { BinanceModule } from './binance/binance.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
     UserModule,
     AuthModule,
     EmailModule,
+    BinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
