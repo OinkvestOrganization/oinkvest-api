@@ -1,4 +1,11 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  forwardRef,
+} from '@nestjs/common';
 import WebSocket from 'ws';
 import { WsServerService } from '@/ws-server/ws-server.service';
 
@@ -15,7 +22,8 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
   private streamCallbacks: Map<string, (data: any) => void> = new Map();
 
   constructor(
-    @Inject(forwardRef(() => WsServerService)) private readonly wsServerService: WsServerService,
+    @Inject(forwardRef(() => WsServerService))
+    private readonly wsServerService: WsServerService,
   ) {}
 
   onModuleInit() {
@@ -38,7 +46,7 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
       this.ws = new WebSocket(this.baseWsUrl);
 
       this.ws.on('open', () => {
-        this.logger.log('Conexão WebSocket estabelecida com sucesso');
+        this.logger.log('Conexão WebSocket estabddelecida com sucesso');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         resolve(true);
@@ -46,14 +54,17 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
 
       this.ws.on('message', (data: WebSocket.Data) => {
         try {
-          const parsedData = JSON.parse(data.toString());
+          const parsedData = JSON.parse(data.valueOf() as string);
 
           if (parsedData.result === null && parsedData.id) {
             this.logger.log(`Subscrição confirmada para ID: ${parsedData.id}`);
             return;
           }
 
-          if (parsedData.stream && this.streamCallbacks.has(parsedData.stream)) {
+          if (
+            parsedData.stream &&
+            this.streamCallbacks.has(parsedData.stream)
+          ) {
             const callback = this.streamCallbacks.get(parsedData.stream);
             if (callback) {
               callback(parsedData.data);
@@ -66,7 +77,10 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
               if (callback) {
                 callback(parsedData);
               }
-              this.wsServerService.broadcastKlines({ stream: streamId, data: parsedData });
+              this.wsServerService.broadcastKlines({
+                stream: streamId,
+                data: parsedData,
+              });
             }
           }
         } catch (error) {
@@ -83,21 +97,25 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
       this.ws.on('close', () => {
         this.logger.warn('Conexão WebSocket fechada');
         this.isConnected = false;
-        
+
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           const delay = Math.pow(2, this.reconnectAttempts) * 1000;
-          this.logger.log(`Tentando reconectar em ${delay}ms (tentativa ${this.reconnectAttempts})`);
-          
+          this.logger.log(
+            `Tentando reconectar em ${delay}ms (tentativa ${this.reconnectAttempts})`,
+          );
+
           this.reconnectTimeout = setTimeout(() => {
-            this.connect().then((success) => {
+            void this.connect().then(async (success) => {
               if (success) {
-                this.resubscribeToStreams();
+                await this.resubscribeToStreams();
               }
             });
           }, delay);
         } else {
-          this.logger.error(`Falha ao reconectar após ${this.maxReconnectAttempts} tentativas`);
+          this.logger.error(
+            `Falha ao reconectar após ${this.maxReconnectAttempts} tentativas`,
+          );
         }
       });
     });
@@ -125,28 +143,33 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
     const streams = Array.from(this.streamCallbacks.keys());
     if (streams.length > 0) {
       this.logger.log(`Resubscrevendo em ${streams.length} streams...`);
-      
+
       if (streams.length > 1) {
         const subscriptionMessage = {
           method: 'SUBSCRIBE',
           params: streams,
           id: Date.now(),
         };
-        
+
         if (this.ws) {
           this.ws.send(JSON.stringify(subscriptionMessage));
         }
       } else {
-        this.ws?.send(JSON.stringify({
-          method: 'SUBSCRIBE',
-          params: [streams[0]],
-          id: Date.now(),
-        }));
+        this.ws?.send(
+          JSON.stringify({
+            method: 'SUBSCRIBE',
+            params: [streams[0]],
+            id: Date.now(),
+          }),
+        );
       }
     }
   }
 
-  async subscribeToStream(streamName: string, callback: (data: any) => void): Promise<boolean> {
+  async subscribeToStream(
+    streamName: string,
+    callback: (data: any) => void,
+  ): Promise<boolean> {
     if (!this.isConnected || !this.ws) {
       const connected = await this.connect();
       if (!connected) {
@@ -155,7 +178,7 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.streamCallbacks.set(streamName, callback);
-    
+
     const subscriptionMessage = {
       method: 'SUBSCRIBE',
       params: [streamName],
@@ -192,25 +215,49 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
     return true;
   }
 
-  async subscribeTicker(symbol: string, callback: (data: any) => void): Promise<boolean> {
+  async subscribeTicker(
+    symbol: string,
+    callback: (data: any) => void,
+  ): Promise<boolean> {
     const streamName = `${symbol.toLowerCase()}@ticker`;
     return this.subscribeToStream(streamName, callback);
   }
 
-  async subscribeTrades(symbol: string, callback: (data: any) => void): Promise<boolean> {
+  async subscribeTrades(
+    symbol: string,
+    callback: (data: any) => void,
+  ): Promise<boolean> {
     const streamName = `${symbol.toLowerCase()}@trade`;
     return this.subscribeToStream(streamName, callback);
   }
 
-  async subscribeOrderBook(symbol: string, levels: 5 | 10 | 20, callback: (data: any) => void): Promise<boolean> {
+  async subscribeOrderBook(
+    symbol: string,
+    levels: 5 | 10 | 20,
+    callback: (data: any) => void,
+  ): Promise<boolean> {
     const streamName = `${symbol.toLowerCase()}@depth${levels}`;
     return this.subscribeToStream(streamName, callback);
   }
 
   async subscribeKlines(
-    symbol: string, 
-    interval: '1m' | '5m' | '15m' | '30m' | '1h' | '2h' | '4h' | '6h' | '8h' | '12h' | '1d' | '3d' | '1w' | '1M',
-    callback: (data: any) => void
+    symbol: string,
+    interval:
+      | '1m'
+      | '5m'
+      | '15m'
+      | '30m'
+      | '1h'
+      | '2h'
+      | '4h'
+      | '6h'
+      | '8h'
+      | '12h'
+      | '1d'
+      | '3d'
+      | '1w'
+      | '1M',
+    callback: (data: any) => void,
   ): Promise<boolean> {
     const streamName = `${symbol.toLowerCase()}@kline_${interval}`;
     return this.subscribeToStream(streamName, callback);
