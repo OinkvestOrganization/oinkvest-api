@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Header, Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -43,5 +43,13 @@ export class WsServerGateway
     @MessageBody() data: KlineSubscriptionDto | string,
   ) {
     this.wsServerService.handleKlineSubscription(client, data);
+  }
+
+  @SubscribeMessage('unsubscribe-klines')
+  handleUnsubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: KlineSubscriptionDto | string,
+  ) {
+    this.wsServerService.handleKlineUnsubscription(client, data);
   }
 }
