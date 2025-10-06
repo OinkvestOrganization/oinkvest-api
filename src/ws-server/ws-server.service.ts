@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocket } from 'ws';
 import KlineSubscriptionDto from './dto/klineSubscription.dto';
+import { BinanceService } from '@/binance/binance.service';
 
 @Injectable()
 export class WsServerService {
@@ -13,7 +14,7 @@ export class WsServerService {
   // Map<streamId, WebSocket>
   private externalSockets = new Map<string, WebSocket>();
 
-  constructor() {}
+  constructor(private readonly binanceService: BinanceService) {}
 
   setServer(server: Server) {
     this.server = server;
@@ -56,6 +57,38 @@ export class WsServerService {
     );
   }
 
+  handleKlineUnsubscription(
+    client: Socket,
+    data: KlineSubscriptionDto | string,
+  ) {
+    let payload: KlineSubscriptionDto;
+    if (typeof data === 'string') {
+      try {
+        payload = JSON.parse(data) as KlineSubscriptionDto;
+      } catch (e) {
+        this.logger.error(
+          'Invalid JSON received for klines unsubscription',
+          data,
+        );
+        client.emit('error', 'Invalid data format');
+        return;
+      }
+    } else {
+      payload = data;
+    }
+
+    this.logger.log(
+      `Client ${client.id} unsubscribed from ${payload.symbol} at ${payload.interval}`,
+    );
+    const streamId = this.getStreamId(payload.symbol, payload.interval);
+    this.unsubscribe(streamId, client.id);
+
+    client.emit(
+      'klines',
+      `Unsubscribed from ${payload.symbol} at ${payload.interval}`,
+    );
+  }
+
   subscribeToKlines(clientId: string, symbol: string, interval: string) {
     const streamId = this.getStreamId(symbol, interval);
 
@@ -85,35 +118,25 @@ export class WsServerService {
     }
   }
 
-  private broadcastKlines(payload: {
-    symbol: string;
-    interval: string;
-    data: string;
-  }) {
-    const { symbol, interval, data } = payload;
-    const streamId = this.getStreamId(symbol, interval);
-    const subscribedClientIds = this.streamSubscribers.get(streamId);
+  public broadcastKlines(payload: { stream: string; data: any }) {
+    const { stream, data } = payload;
+    const subscribedClientIds = this.streamSubscribers.get(stream);
 
     if (subscribedClientIds) {
       subscribedClientIds.forEach((clientId) => {
-        this.server.to(clientId).emit('klines', { symbol, interval, data });
+        this.server.to(clientId).emit('klines', { stream, data });
       });
     }
   }
 
   createKlineSubscription(symbol: string, interval: string) {
     const streamId = this.getStreamId(symbol, interval);
-
-    const intervalId = setInterval(() => {
-      this.broadcastKlines({
-        symbol,
-        interval,
-        data: 'Sample kline data',
-      });
-    }, 2000);
+    this.binanceService.subscribeKlines(symbol, interval as any, (data) => {
+      // O broadcast é feito pelo BinanceService agora
+    });
 
     this.externalSockets.set(streamId, {
-      close: () => clearInterval(intervalId),
+      close: () => this.binanceService.unsubscribeFromStream(streamId),
     } as any);
   }
 
@@ -131,7 +154,7 @@ export class WsServerService {
   }
 
   private getStreamId(symbol: string, interval: string): string {
-    return `${symbol}@${interval}`;
+    return `${symbol.toLowerCase()}@kline_${interval}`;
   }
 
   public getConnectionsStatus() {
