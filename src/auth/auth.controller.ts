@@ -31,19 +31,17 @@ export class AuthController {
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) response: Response, // Injete o objeto Response
+    @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(loginDto.email, loginDto.senha);
 
     // Define o cookie
     response.cookie('access_token', result.access_token, {
-      httpOnly: true, // O cookie não pode ser acessado via JavaScript
-      secure: process.env.NODE_ENV === 'production', // Use https em produção
-      sameSite: 'strict', // Proteção CSRF
-      maxAge: 3600 * 1000, // 1 hora em milissegundos
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 3600 * 1000,
     });
-
-    // Você pode retornar uma mensagem de sucesso ou dados do usuário
     return { message: 'Login bem-sucedido' };
   }
 
