@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { WsServerService } from '@/ws-server/ws-server.service';
+import { KlineServerService } from '@/kline-server/kline-server.service';
 
 @Injectable()
 export class WsAdminService {
-  constructor(private readonly wsServerService: WsServerService) {}
+  constructor(private readonly klineServerService: KlineServerService) {}
 
   getStatus() {
-    return this.wsServerService.getConnectionsStatus();
+    return this.klineServerService.getConnectionsStatus();
   }
 }

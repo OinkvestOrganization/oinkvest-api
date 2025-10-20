@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { WsAdminController } from './ws-admin.controller';
 import { WsAdminService } from './ws-admin.service';
-import { WsServerModule } from '@/ws-server/ws-server.module';
+import { KlineServerModule } from '@/kline-server/kline-server.module';
 
 @Module({
-  imports: [WsServerModule],
+  imports: [KlineServerModule],
   controllers: [WsAdminController],
   providers: [WsAdminService],
   exports: [WsAdminService],

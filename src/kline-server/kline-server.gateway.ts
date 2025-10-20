@@ -10,19 +10,19 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { WsServerService } from './ws-server.service';
+import { KlineServerService } from './kline-server.service';
 import KlineSubscriptionDto from './dto/klineSubscription.dto';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class WsServerGateway
+export class KlineServerGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
 
-  private readonly logger: Logger = new Logger(WsServerGateway.name);
+  private readonly logger: Logger = new Logger(KlineServerGateway.name);
 
-  constructor(private readonly wsServerService: WsServerService) {}
+  constructor(private readonly wsServerService: KlineServerService) {}
 
   afterInit(server: Server) {
     this.wsServerService.setServer(server);
@@ -40,7 +40,7 @@ export class WsServerGateway
   @SubscribeMessage('klines')
   handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: KlineSubscriptionDto | string,
+    @MessageBody() data: KlineSubscriptionDto ,
   ) {
     this.wsServerService.handleKlineSubscription(client, data);
   }
@@ -48,7 +48,7 @@ export class WsServerGateway
   @SubscribeMessage('unsubscribe-klines')
   handleUnsubscribe(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: KlineSubscriptionDto | string,
+    @MessageBody() data: KlineSubscriptionDto,
   ) {
     this.wsServerService.handleKlineUnsubscription(client, data);
   }
