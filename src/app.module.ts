@@ -17,7 +17,7 @@ import { BinanceStreamClientModule } from './binance-stream-client/binance-strea
       isGlobal: true,
     }),
     EventEmitterModule.forRoot({
-      wildcard: true
+      wildcard: true,
     }),
     PrismaModule,
     UserModule,

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { KlineServerService } from './kline-server.service';
 import { KlineServerGateway } from './kline-server.gateway';
 import { AuthModule } from '@/auth/auth.module';
@@ -10,4 +10,4 @@ import { KlineHistoryService } from './kline-history.service';
   providers: [KlineServerGateway, KlineServerService, KlineHistoryService],
   exports: [KlineServerService, KlineHistoryService],
 })
-export class KlineServerModule{}
+export class KlineServerModule {}

@@ -1,4 +1,4 @@
-import { IsNumber, Max, Min } from "class-validator";
+import { IsNumber, Max, Min } from 'class-validator';
 
 class KlineSubscriptionDto {
   symbol: string;

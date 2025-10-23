@@ -98,12 +98,17 @@ export class UserService {
     return this.excluirSenha(user);
   }
 
-  async activateUser (user: string) {
-    const userExists = await this.prisma.user.findUnique({where: {id: user}});
+  async activateUser(user: string) {
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: user },
+    });
     if (!userExists) {
       throw new NotFoundException(`Usuário com ID "${user}" não encontrado.`);
     }
-    const userActivated = await this.prisma.user.update({where: {id: user}, data: {emailVerificado: new Date(Date.now()).toISOString()}});
+    const userActivated = await this.prisma.user.update({
+      where: { id: user },
+      data: { emailVerificado: new Date(Date.now()).toISOString() },
+    });
     return this.excluirSenha(userActivated);
   }
 }

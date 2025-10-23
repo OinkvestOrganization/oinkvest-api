@@ -118,8 +118,8 @@ export class KlineServerService {
     if (typeof data === 'string') {
       try {
         return JSON.parse(data) as KlineSubscriptionDto;
-      } catch (e) {
-        this.logger.error('Invalid JSON for subscription', data);
+      } catch (e: any) {
+        this.logger.error('Invalid JSON for subscription', data, e);
         client.emit('error', 'Invalid data format');
         return null;
       }

@@ -21,7 +21,7 @@ export class KlineHistoryService {
     });
 
     this.ws.on('message', (event) => {
-      const message = JSON.parse(event.toString());
+      const message = JSON.parse(JSON.stringify(event));
       if (this.pendingRequests.has(message.id)) {
         const resolve = this.pendingRequests.get(message.id);
         if (resolve) {
@@ -38,11 +38,7 @@ export class KlineHistoryService {
     });
   }
 
-  async getHistory(
-    symbol: string,
-    interval: string,
-    limit = 1,
-  ): Promise<any> {
+  async getHistory(symbol: string, interval: string, limit = 1): Promise<any> {
     this.logger.debug(
       `Buscando histórico de klines para ${symbol} com intervalo ${interval} e limite ${limit}`,
     );
