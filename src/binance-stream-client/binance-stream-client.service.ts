@@ -30,7 +30,7 @@ export class BinanceStreamClientService implements OnModuleInit {
         const streamName = `${message.s.toLowerCase()}@kline_${message.k.i}`;
         const wasSent = this.eventEmitter.emit(`binance.stream.${streamName}`, {
           stream: streamName,
-          data: message.k,
+          data: message,
         });
         if (!wasSent) {
           this.logger.warn(`Nenhum listener para o evento ${streamName}`);

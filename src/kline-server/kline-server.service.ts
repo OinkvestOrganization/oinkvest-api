@@ -45,20 +45,20 @@ export class KlineServerService {
       this.binanceStreamClient.subscribeToStream(streamName);
     }
     this.streamSubscribers.get(streamName)?.add(client.id);
-    const history = await this.klineHistoryServer.getHistory(
-      data.symbol,
-      data.interval,
-      data.limit,
-    );
+    // const history = await this.klineHistoryServer.getHistory(
+    //   data.symbol,
+    //   data.interval,
+    //   data.limit,
+    // );
 
-    if (Array.isArray(history)) {
-      const historyDtos = history.map((kline) =>
-        KlineDto.fromHistory(kline, data.symbol, data.interval),
-      );
-      client.emit('klines', historyDtos);
-    } else {
-      client.emit('klines', history);
-    }
+    // if (Array.isArray(history)) {
+    //   const historyDtos = history.map((kline) =>
+    //     KlineDto.fromHistory(kline, data.symbol, data.interval),
+    //   );
+    //   client.emit('klines', historyDtos);
+    // } else {
+    //   client.emit('klines', history);
+    // }
   }
 
   handleKlineUnsubscription(client: Socket, data: KlineSubscriptionDto) {
@@ -101,8 +101,8 @@ export class KlineServerService {
     const subscribers = this.streamSubscribers.get(stream);
     if (subscribers) {
       subscribers.forEach((clientId) => {
-        const klineDto = KlineDto.fromBinance(data);
-        this.server.to(clientId).emit('klines', klineDto);
+        // const klineDto = KlineDto.fromBinance(data);
+        this.server.to(clientId).emit('klines', data);
       });
     }
   }
