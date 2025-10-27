@@ -12,6 +12,8 @@ import {
 import { Server, Socket } from 'socket.io';
 import { KlineServerService } from './kline-server.service';
 import KlineSubscriptionDto from './dto/klineSubscription.dto';
+import { AsyncApiOperation, AsyncApiPub, AsyncApiSub } from 'nestjs-asyncapi';
+import { KlineDto } from './dto/kline.dto';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class KlineServerGateway
@@ -37,14 +39,35 @@ export class KlineServerGateway
     this.wsServerService.deregisterClient(client);
   }
 
+  
+  @AsyncApiSub({
+    channel: 'klines',
+    message: { payload: KlineSubscriptionDto },
+    description: 'Se inscreve no canal "klines" para receber o histórico e atualizações de klines.'
+  })
+  @AsyncApiPub({
+    channel: 'klines',
+    message: { payload: KlineDto },
+  })
   @SubscribeMessage('klines')
   handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: KlineSubscriptionDto ,
+    @MessageBody() data: KlineSubscriptionDto,
   ) {
     this.wsServerService.handleKlineSubscription(client, data);
   }
 
+  // @AsyncApiSub({
+  //   channel: 'unsubscribe-klines',
+  //   message: { payload: KlineDto},
+  //   description: 'Se inscreve no canal "klines" para receber o histórico e atualizações de klines.'
+  // })
+  @AsyncApiOperation({
+    type: 'sub',
+    channel: 'unsubscribe-klines',
+    message: { payload: KlineSubscriptionDto },
+    description: 'Se desinscreve do canal de klines'
+  })
   @SubscribeMessage('unsubscribe-klines')
   handleUnsubscribe(
     @ConnectedSocket() client: Socket,
