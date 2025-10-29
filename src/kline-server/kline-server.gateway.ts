@@ -42,19 +42,28 @@ export class KlineServerGateway
   @AsyncApiSub({
     channel: 'klines',
     message: { payload: KlineSubscriptionDto },
+    summary: 'Canal de inscrição de klines',
     description:
       'Se inscreve no canal "klines" para receber o histórico e atualizações de klines.',
   })
   @AsyncApiPub({
     channel: 'klines',
     message: { payload: KlineDto },
+    summary: 'Retorno de velas',
+    description:
+      'Resposta vinda do servidor contendo velas para popular o gráfico',
+  })
+  @AsyncApiOperation({
+    channel: 'klines',
+    type: 'pub',
+    message: { payload: KlineDto, name: 'Velas do gráfico' },
   })
   @SubscribeMessage('klines')
-  handleMessage(
+  async handleMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: KlineSubscriptionDto,
   ) {
-    this.wsServerService.handleKlineSubscription(client, data);
+    await this.wsServerService.handleKlineSubscription(client, data);
   }
 
   // @AsyncApiSub({
@@ -66,6 +75,7 @@ export class KlineServerGateway
     type: 'sub',
     channel: 'unsubscribe-klines',
     message: { payload: KlineSubscriptionDto },
+    summary: 'Remoção de inscrição',
     description: 'Se desinscreve do canal de klines',
   })
   @SubscribeMessage('unsubscribe-klines')
