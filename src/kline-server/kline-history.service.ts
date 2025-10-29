@@ -5,7 +5,7 @@ import { WebSocket } from 'ws';
 @Injectable()
 export class KlineHistoryService {
   private logger = new Logger(KlineHistoryService.name);
-  private readonly wsRestBinance = 'wss://ws-api.binance.com:443/ws-api/v3';
+  private readonly wsRestBinance = 'wss://ws-api.binance.com:9443/ws-api/v3';
   private ws: WebSocket | null = null;
   private pendingRequests = new Map<string, (value: any) => void>();
 
@@ -20,14 +20,13 @@ export class KlineHistoryService {
       this.logger.log('Conexão com Binance WebSocket API aberta');
     });
 
-    this.ws.on('message', (event) => {
-      const message = JSON.parse(event.toString());
-      if (this.pendingRequests.has(message.id)) {
-        const resolve = this.pendingRequests.get(message.id);
-        if (resolve) {
-          resolve(message.result);
-          this.pendingRequests.delete(message.id);
-        }
+    this.ws.on('message', (data: Buffer) => {
+      const message = JSON.parse(data.toString());
+      const resolve = this.pendingRequests.get(message.id);
+
+      if (resolve) {
+        resolve(message.result);
+        this.pendingRequests.delete(message.id);
       } else {
         this.logger.debug('Binance WebSocket API message:', message);
       }
@@ -38,11 +37,7 @@ export class KlineHistoryService {
     });
   }
 
-  async getHistory(
-    symbol: string,
-    interval: string,
-    limit = 1,
-  ): Promise<any> {
+  async getHistory(symbol: string, interval: string, limit = 1): Promise<any> {
     this.logger.debug(
       `Buscando histórico de klines para ${symbol} com intervalo ${interval} e limite ${limit}`,
     );
