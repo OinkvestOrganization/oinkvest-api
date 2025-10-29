@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { AsyncApiDocumentBuilder, AsyncApiModule } from 'nestjs-asyncapi';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,6 +22,17 @@ async function bootstrap() {
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('swagger', app, documentFactory());
+
+  const asyncApiOptions = new AsyncApiDocumentBuilder()
+    .setTitle('Oinkvest WebSocket API')
+    .setDescription('Guia de rotas da API Oinkvest')
+    .setVersion('1.0')
+    .setDefaultContentType('application/json')
+    .addServer('/', { url: 'ws://localhost:3001', protocol: 'socket.io' })
+    .build();
+
+  const asyncapiDocument = AsyncApiModule.createDocument(app, asyncApiOptions);
+  await AsyncApiModule.setup('/asyncapi', app, asyncapiDocument);
 
   await app.listen(process.env.PORT ?? 3001);
 }
