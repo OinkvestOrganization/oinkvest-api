@@ -4,8 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: >
-      sh -c "npm run start:dev"
+    command: start
     ports:
       - "3001:3001"
     depends_on:
