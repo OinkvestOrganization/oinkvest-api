@@ -48,15 +48,10 @@ export class KlineServerGateway
   })
   @AsyncApiPub({
     channel: 'klines',
-    message: { payload: KlineDto },
+    message: { payload: KlineDto, name: 'Atualização de vela' },
     summary: 'Retorno de velas',
     description:
-      'Resposta vinda do servidor contendo velas para popular o gráfico',
-  })
-  @AsyncApiOperation({
-    channel: 'klines',
-    type: 'pub',
-    message: { payload: KlineDto, name: 'Velas do gráfico' },
+      'Resposta vinda do servidor contendo velas para popular o gráfico. O primeiro retorno é uma lista de KlineDto com o histórico de velas. Os retornos seguintes são objetos KlineDto únicos com a atualização em tempo real.',
   })
   @SubscribeMessage('klines')
   async handleMessage(
@@ -66,11 +61,6 @@ export class KlineServerGateway
     await this.wsServerService.handleKlineSubscription(client, data);
   }
 
-  // @AsyncApiSub({
-  //   channel: 'unsubscribe-klines',
-  //   message: { payload: KlineDto},
-  //   description: 'Se inscreve no canal "klines" para receber o histórico e atualizações de klines.'
-  // })
   @AsyncApiOperation({
     type: 'sub',
     channel: 'unsubscribe-klines',

@@ -5,7 +5,7 @@ import { WebSocket } from 'ws';
 @Injectable()
 export class KlineHistoryService {
   private logger = new Logger(KlineHistoryService.name);
-  private readonly wsRestBinance = 'wss://ws-api.binance.com:443/ws-api/v3';
+  private readonly wsRestBinance = 'wss://ws-api.binance.com:9443/ws-api/v3';
   private ws: WebSocket | null = null;
   private pendingRequests = new Map<string, (value: any) => void>();
 
@@ -20,14 +20,13 @@ export class KlineHistoryService {
       this.logger.log('Conexão com Binance WebSocket API aberta');
     });
 
-    this.ws.on('message', (event) => {
-      const message = JSON.parse(JSON.stringify(event));
-      if (this.pendingRequests.has(message.id)) {
-        const resolve = this.pendingRequests.get(message.id);
-        if (resolve) {
-          resolve(message.result);
-          this.pendingRequests.delete(message.id);
-        }
+    this.ws.on('message', (data: Buffer) => {
+      const message = JSON.parse(data.toString());
+      const resolve = this.pendingRequests.get(message.id);
+
+      if (resolve) {
+        resolve(message.result);
+        this.pendingRequests.delete(message.id);
       } else {
         this.logger.debug('Binance WebSocket API message:', message);
       }
