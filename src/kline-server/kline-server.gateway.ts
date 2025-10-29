@@ -40,7 +40,7 @@ export class KlineServerGateway
   @SubscribeMessage('klines')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: KlineSubscriptionDto,
+    @MessageBody() data: KlineSubscriptionDto ,
   ) {
     await this.wsServerService.handleKlineSubscription(client, data);
   }
