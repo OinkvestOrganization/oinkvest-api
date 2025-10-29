@@ -5,6 +5,7 @@ import { BinanceStreamClientService } from '../binance-stream-client/binance-str
 import KlineSubscriptionDto from './dto/klineSubscription.dto';
 import { KlineHistoryService } from './kline-history.service';
 import { KlineDto } from './dto/kline.dto';
+import { KlineStatusDto } from './dto/kline-status.dto';
 
 @Injectable()
 export class KlineServerService {
@@ -127,7 +128,7 @@ export class KlineServerService {
     return data;
   }
 
-  public getConnectionsStatus() {
+  public getConnectionsStatus(): KlineStatusDto {
     const streams = {};
     for (const [streamId, clientIds] of this.streamSubscribers.entries()) {
       streams[streamId] = {

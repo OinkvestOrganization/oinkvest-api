@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AsyncApiDocumentBuilder, AsyncApiModule } from 'nestjs-asyncapi';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +12,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.use(cookieParser());
-
+  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   const config = new DocumentBuilder()
     .setTitle('Oinkvest API')
     .setDescription('Guia de rotas da API Oinkvest')

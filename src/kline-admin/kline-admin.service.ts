@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { KlineServerService } from '@/kline-server/kline-server.service';
+import { KlineStatusDto } from '@/kline-server/dto/kline-status.dto';
 
 @Injectable()
-export class WsAdminService {
+export class KlineAdminService {
   constructor(private readonly klineServerService: KlineServerService) {}
 
-  getStatus() {
+  getStatus(): KlineStatusDto {
     return this.klineServerService.getConnectionsStatus();
   }
 }

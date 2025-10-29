@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import type { Response } from 'express';
 
@@ -19,15 +19,21 @@ export class AuthController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
-  @ApiBody({
-    type: RegisterDto,
+  @ApiOperation({
+    summary: 'Cadastro',
+    description: 'Rota para cadastros de usuários.',
+    tags: ['Auth'],
   })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ type: LoginDto })
+  @ApiOperation({
+    summary: 'Login',
+    description: 'Rota para login de usuários.',
+    tags: ['Auth'],
+  })
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
@@ -40,13 +46,18 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 3600 * 1000,
+      maxAge: 3600 * 1000, // 1 hora
     });
     return { message: 'Login bem-sucedido' };
   }
 
   @HttpCode(HttpStatus.CREATED)
   @Post('verify')
+  @ApiOperation({
+    summary: 'Verificação de email',
+    description: 'Rota para verificação de email de usuários.',
+    tags: ['Auth'],
+  })
   verify(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
   }
