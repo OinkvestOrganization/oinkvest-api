@@ -14,14 +14,14 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(uuid())
-  nome               String
-  email              String
-  senha              String
-  dataCriacao        DateTime            @default(now())
-  emailVerificado    DateTime?
-  verificationTokens VerificationToken[]
-  status Boolean @default(true)
+  id                  String              @id @default(uuid())
+  nome                String
+  email               String
+  senha               String
+  dataCriacao         DateTime            @default(now())
+  emailVerificado     DateTime?
+  verificationTokens  VerificationToken[]
+  status              Boolean             @default(true)
 }
 
 model VerificationToken {
