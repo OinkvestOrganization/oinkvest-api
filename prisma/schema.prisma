@@ -22,6 +22,9 @@ model User {
   emailVerificado    DateTime?
   verificationTokens VerificationToken[]
   status Boolean @default(true)
+  exchangeCredentials  ExchangeCredential[]
+  walletBalances       WalletBalance[]
+  walletSyncLogs       WalletSyncLog[]
 }
 
 model VerificationToken {
@@ -32,3 +35,44 @@ model VerificationToken {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// --- Wallet and Binance Integration Models ---
+
+model ExchangeCredential {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  exchange     String   @default("BINANCE")
+  apiKey       String   // armazenar cifrado
+  apiSecret    String   // armazenar cifrado
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, exchange])
+}
+
+model WalletBalance {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  asset      String
+  free       Decimal  @default(0)
+  locked     Decimal  @default(0)
+  total      Decimal  @default(0)
+  lastSyncAt DateTime @default(now())
+
+  @@unique([userId, asset])
+  @@index([asset])
+}
+
+model WalletSyncLog {
+  id          String   @id @default(cuid())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?
+  type        String   @default("SPOT_BALANCE")
+  status      String   @default("PENDING") // PENDING, SUCCESS, ERROR
+  message     String?  // erro ou mensagem do resultado
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+}

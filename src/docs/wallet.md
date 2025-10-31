@@ -87,3 +87,4 @@ signature=<hex>
 2. **(Passo 3-5)** Cliente Binance assinado + serviço `syncSpotBalances(userId)`.
 3. **(Passo 6)** Controller/DTOs (`POST /wallet/sync/balances`, `GET /wallet/balances`).
 4. **(Passo 7+)** Agendador e metadados de ativos.
+
