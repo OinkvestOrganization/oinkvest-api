@@ -6,7 +6,8 @@ Bem-vindo ao repositório do backend da Oinkvest, uma API robusta construída co
 
 Com o servidor em execução, você pode acessar a documentação interativa da API via Swagger em:
 
-`http://localhost:3001/api`
+`http://localhost:3001/swagger`
+`http://localhost:3001/asyncapi`
 
 Nela você encontrará detalhes sobre todos os endpoints disponíveis, incluindo parâmetros, respostas e exemplos de uso.
 
@@ -82,7 +83,7 @@ Recomendamos executar a aplicação via Docker Compose, pois isso simplifica a c
 
 ### Pré-requisitos de desenvolvimento
 
-- **Docker** e **Docker Compose** instalados.
+- **Docker** e **Docker Compose** instalados e trocar entrypoint.sh de CRLF para LF.
 
 ### Passos
 
