@@ -9,6 +9,9 @@ import { KlineServerModule } from './kline-server/kline-server.module';
 import { KlineAdminModule } from './kline-admin/kline-admin.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BinanceStreamClientModule } from './binance-stream-client/binance-stream-client.module';
+import { WalletService } from './wallet/wallet.service';
+import { WalletController } from './wallet/wallet.controller';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -25,7 +28,9 @@ import { BinanceStreamClientModule } from './binance-stream-client/binance-strea
     KlineServerModule,
     KlineAdminModule,
     BinanceStreamClientModule,
+    WalletModule,
   ],
-  providers: [AppService],
+  providers: [AppService, WalletService],
+  controllers: [WalletController],
 })
 export class AppModule {}
