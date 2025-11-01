@@ -16,10 +16,11 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
+  private readonly logger = new Logger(WalletController.name);
 
   @Post('credentials')
   saveCredentials(@Req() req, @Body() dto: CreateExchangeCredentialDto) {
-    Logger.log('Saving exchange credentials for user:', req.user);
+    this.logger.log('Salvando credenciais para user ' + req.user.userId);
     const userId = req.user.userId;
     return this.walletService.upsertCredentials(userId, dto);
   }
@@ -28,5 +29,11 @@ export class WalletController {
   async getCredentials(@Req() req) {
     const userId = req.user.userId;
     return this.walletService.getCredential(userId);
+  }
+
+  @Get('binance/balances')
+  async getUserBalances(@Req() req) {
+    const userId = req.user.userId;
+    return this.walletService.fetchUserBalances(userId);
   }
 }
