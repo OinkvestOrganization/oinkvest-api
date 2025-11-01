@@ -11,7 +11,7 @@ export class WalletService {
     const encryptedKey = CryptoUtil.encrypt(dto.apiKey);
     const encryptedSecret = CryptoUtil.encrypt(dto.apiSecret);
 
-    return this.prisma.exchangeCredential.upsert({
+    const cred = this.prisma.exchangeCredential.upsert({
       where: { userId_exchange: { userId, exchange: 'BINANCE' } },
       create: {
         userId,
@@ -24,7 +24,16 @@ export class WalletService {
         apiSecret: encryptedSecret,
         updatedAt: new Date(),
       },
+      select: {
+        id: true,
+        userId: true,
+        exchange: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
+    return cred;
   }
 
   async getCredential(userId: string) {

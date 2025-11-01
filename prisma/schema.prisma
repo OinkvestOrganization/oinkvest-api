@@ -48,7 +48,7 @@ model ExchangeCredential {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@unique([userId, exchange])
+   @@unique([userId, exchange], name: "userId_exchange")
 }
 
 model WalletBalance {
