@@ -15,18 +15,20 @@ export class ListBalancesQueryDto {
     description: 'Filtra por símbolo do ativo',
     example: 'USDT',
   })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   asset?: string;
 
   @ApiPropertyOptional({
     description: 'Filtra por total mínimo',
     example: 0.0001,
   })
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }) =>
+    value === undefined || value === '' ? undefined : Number(value),
+  )
   @IsNumber()
   @Min(0)
+  @IsOptional()
   minTotal?: number;
 
   @ApiPropertyOptional({
@@ -35,20 +37,20 @@ export class ListBalancesQueryDto {
     default: 100,
     maximum: 500,
   })
-  @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   @IsPositive()
   @Max(500)
+  @IsOptional()
   take?: number = 100;
 
   @ApiPropertyOptional({
     description: 'Pular N registros (paginação)',
     example: 0,
   })
-  @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(0)
+  @IsOptional()
   skip?: number = 0;
 }
