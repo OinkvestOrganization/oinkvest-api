@@ -4,12 +4,11 @@ import {
   Post,
   HttpCode,
   HttpStatus,
-  Res,
   Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { ApiBody } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import type { Response } from 'express';
 
@@ -19,36 +18,36 @@ export class AuthController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
-  @ApiBody({
-    type: RegisterDto,
+  @ApiOperation({
+    summary: 'Cadastro',
+    description: 'Rota para cadastros de usuários.',
+    tags: ['Auth'],
   })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
   @HttpCode(HttpStatus.OK)
-  @ApiBody({ type: LoginDto })
+  @ApiOperation({
+    summary: 'Login',
+    description: 'Rota para login de usuários.',
+    tags: ['Auth'],
+  })
   @Post('login')
-  async login(
-    @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) response: Response, // Injete o objeto Response
-  ) {
+  async login(@Body() loginDto: LoginDto) {
     const result = await this.authService.login(loginDto.email, loginDto.senha);
 
-    // Define o cookie
-    response.cookie('access_token', result.access_token, {
-      httpOnly: true, // O cookie não pode ser acessado via JavaScript
-      secure: process.env.NODE_ENV === 'production', // Use https em produção
-      sameSite: 'strict', // Proteção CSRF
-      maxAge: 3600 * 1000, // 1 hora em milissegundos
-    });
-
-    // Você pode retornar uma mensagem de sucesso ou dados do usuário
-    return { message: 'Login bem-sucedido' };
+    if (!result.user) return 'Usuário não encontrado';
+    return { user: result.user, access_token: result.access_token };
   }
 
   @HttpCode(HttpStatus.CREATED)
   @Post('verify')
+  @ApiOperation({
+    summary: 'Verificação de email',
+    description: 'Rota para verificação de email de usuários.',
+    tags: ['Auth'],
+  })
   verify(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
   }

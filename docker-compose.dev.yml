@@ -1,18 +1,17 @@
 services:
   app:
-    container_name: oinkved-api-dev
+    container_name: oinkvest-api-dev
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: >
-      sh -c "npm run start:dev"
+    command: start
     ports:
       - "3001:3001"
     depends_on:
       - db
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      WT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
     volumes:
       - .:/app
       - /app/node_modules

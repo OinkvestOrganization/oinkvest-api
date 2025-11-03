@@ -3,7 +3,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class EmailService {
-  constructor(private readonly mailer: MailerService) { }
+  constructor(private readonly mailer: MailerService) {}
   async sendVerificationEmail(to: string, token: string, nome?: string) {
     const verifyUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${encodeURIComponent(token)}`;
 
@@ -12,7 +12,7 @@ export class EmailService {
       <div style="width:100%;background:#f4f4f5;">
         <div style="max-width:600px;margin:0 auto;background:#fff;padding:50px;border-radius:8px;font-family:Arial,sans-serif;line-height:1.5;color:#333;text-align:center">
           <h1 style="color:#EAB308;font-size:40px;margin:0 0 12px 0;">OINKVEST</h1>
-          <h2 style="color:#000;font-size:32px;margin:0 0 20px 0;">Verifique seu email</h2>
+          <h2 style="color:#000;font-size:28px;margin:0 0 20px 0;">Seja muito bem vindo ${nome}. Para prosseguir, verifique seu email</h2>
           
           <p style="margin:0 0 20px 0;font-size:16px;color:#555;">
             Confirme que deseja usar esse endereço de e-mail para sua conta Oinkvest. 

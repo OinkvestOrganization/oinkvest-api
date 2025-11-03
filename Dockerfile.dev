@@ -13,7 +13,14 @@ RUN npm install
 # Copia o restante do código
 COPY . .
 
-RUN npm run prisma:generate
+# Copia e torna o entrypoint executável
+COPY entrypoint.sh .
+#RUN chmod +x entrypoint.sh --alterado para lidar com possíveis problemas de fim de linha do Windows (CRLF WINOWS E LF LINUX)
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Expõe a porta que o Nest.js usará (padrão 3001)
 EXPOSE 3001
+
+# Define o entrypoint e o comando padrão
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["start"]

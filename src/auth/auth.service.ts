@@ -1,6 +1,7 @@
-import { UserService } from 'src/user/user.service';
+import { UserService } from '@/user/user.service';
 import {
   ConflictException,
+  // ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -8,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { EmailService } from '@/email/email.service';
-import { randomUUID } from 'crypto';
+// import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
@@ -21,23 +22,24 @@ export class AuthService {
   ) {}
 
   async register(createUserDto: CreateUserDto) {
-    const user = await this.usersService.createUser(createUserDto);
-    const token = randomUUID();
-    const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    await this.usersService.createUser(createUserDto);
+    // const user = await this.usersService.createUser(createUserDto);
+    // const token = randomUUID();
+    // const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
-    const verificationToken = await this.prisma.verificationToken.create({
-      data: {
-        token: token,
-        expires: expiresIn,
-        userId: user.id,
-      },
-    });
+    // const verificationToken = await this.prisma.verificationToken.create({
+    //   data: {
+    //     token: token,
+    //     expires: expiresIn,
+    //     userId: user.id,
+    //   },
+    // });
 
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      verificationToken.token,
-      user.nome,
-    );
+    // await this.emailService.sendVerificationEmail(
+    //   user.email,
+    //   verificationToken.token,
+    //   user.nome,
+    // );
     return {
       message:
         'Cadastro realizado com sucesso. Verifique seu e-mail para ativar sua conta.',
@@ -68,6 +70,11 @@ export class AuthService {
 
     return {
       access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+      },
     };
   }
 
