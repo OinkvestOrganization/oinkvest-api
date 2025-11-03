@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AppService } from './app.service';
-import { UserModule } from './user/user.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { EmailModule } from './email/email.module';
 import { ConfigModule } from '@nestjs/config';
-import { KlineServerModule } from './kline-server/kline-server.module';
-import { KlineAdminModule } from './kline-admin/kline-admin.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { BinanceStreamClientModule } from './binance-stream-client/binance-stream-client.module';
+import { EmailModule } from './email/email.module';
+import { KlineAdminModule } from './kline-admin/kline-admin.module';
+import { KlineServerModule } from './kline-server/kline-server.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { UserModule } from './user/user.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { BinanceStreamClientModule } from './binance-stream-client/binance-strea
     KlineServerModule,
     KlineAdminModule,
     BinanceStreamClientModule,
+    WalletModule,
   ],
   providers: [AppService],
 })

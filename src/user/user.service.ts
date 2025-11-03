@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from '@/prisma/prisma.service';
-// Importação corrigida
+
 import { User } from '@prisma/client';
 
 @Injectable()
