@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -34,11 +35,20 @@ export class AuthController {
     tags: ['Auth'],
   })
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const result = await this.authService.login(loginDto.email, loginDto.senha);
 
-    if (!result.user) return 'Usuário não encontrado';
-    return { user: result.user, access_token: result.access_token };
+    // Define o cookie
+    response.cookie('access_token', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 3600 * 1000, // 1 hora
+    });
+    return { access_token: result.access_token, user: result.user };
   }
 
   @HttpCode(HttpStatus.CREATED)
