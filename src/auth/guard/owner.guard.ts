@@ -16,12 +16,13 @@ export class OwnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     const paramId = request.params.id;
-    console.log(`user id no token: ${user.userId}`);
-    console.log(`param id: ${paramId}`);
 
     if (!user || !paramId) {
       return false;
     }
+
+    console.log(`user id no token: ${user.userId}`);
+    console.log(`param id: ${paramId}`);
 
     if (user.userId !== paramId) {
       throw new ForbiddenException(

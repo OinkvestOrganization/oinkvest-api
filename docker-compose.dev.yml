@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: oinkved-api-dev
+    container_name: oinkvest-api-dev
     build:
       context: .
       dockerfile: Dockerfile.dev
