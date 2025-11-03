@@ -1,5 +1,6 @@
 import { UserService } from '@/user/user.service';
 import {
+  ConflictException,
   // ConflictException,
   Injectable,
   UnauthorizedException,
@@ -59,16 +60,21 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    // if (!user.emailVerificado) {
-    //   throw new ConflictException(
-    //     'Conta ainda não verificada. Por favor verifique seu e-mail.',
-    //   );
-    // }
+    if (!user.emailVerificado) {
+      throw new ConflictException(
+        'Conta ainda não verificada. Por favor verifique seu e-mail.',
+      );
+    }
 
     const payload = { sub: user.id, email: user.email };
 
     return {
       access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+      },
     };
   }
 
