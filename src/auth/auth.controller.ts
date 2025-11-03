@@ -48,7 +48,7 @@ export class AuthController {
       sameSite: 'strict',
       maxAge: 3600 * 1000, // 1 hora
     });
-    return { message: 'Login bem-sucedido' };
+    return { access_token: result.access_token, user: result.user };
   }
 
   @HttpCode(HttpStatus.CREATED)
