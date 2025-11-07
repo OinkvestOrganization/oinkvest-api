@@ -5,8 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
 @Injectable()
-export class BinanceSpotClientService {
-  private readonly logger = new Logger(BinanceSpotClientService.name);
+export class BinanceRestClientService {
+  private readonly logger = new Logger(BinanceRestClientService.name);
   private readonly baseUrl =
     process.env.BINANCE_API_URL || 'https://api.binance.com';
   private readonly defaultRecvWindow =
