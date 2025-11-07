@@ -1,5 +1,5 @@
 export const BinanceClientStub = {
-  getAccountInfo: jest.fn().mockResolvedValue({
+  signedGet: jest.fn().mockResolvedValue({
     balances: [
       { asset: 'USDT', free: '100', locked: '0' },
       { asset: 'BTC', free: '0.002', locked: '0' },
