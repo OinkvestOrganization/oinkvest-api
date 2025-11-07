@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
-import { BinanceSpotClientService } from 'src/binance/binance-spot-client.service';
+import { BinanceSpotClientService } from '@/binance/binance-rest-client.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { WalletModule } from 'src/wallet/wallet.module';
 

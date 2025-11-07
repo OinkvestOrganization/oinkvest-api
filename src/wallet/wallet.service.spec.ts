@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WalletService } from './wallet.service';
 import { PrismaService } from '@/prisma/prisma.service';
-import { BinanceSpotClientService } from '@/binance/binance-spot-client.service';
+import { BinanceSpotClientService } from '@/binance/binance-rest-client.service';
 
 const mockPrismaService = {};
 

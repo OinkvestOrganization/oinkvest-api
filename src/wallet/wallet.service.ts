@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { BinanceSpotClientService } from '../binance/binance-spot-client.service';
+import { BinanceSpotClientService } from '../binance/binance-rest-client.service';
 import { CryptoUtil } from '../common/utils/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExchangeCredentialDto } from './dto/create-exchange-credential.dto';
