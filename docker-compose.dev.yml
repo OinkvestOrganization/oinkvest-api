@@ -8,17 +8,23 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
     volumes:
       - .:/app
-      - /app/node_modules
+      - node_modules_dev:/app/node_modules
   db:
     image: postgres:15-alpine
     container_name: postgres_db_nest_dev
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -29,3 +35,4 @@ services:
       - postgres_data_dev:/var/lib/postgresql/data
 volumes:
   postgres_data_dev:
+  node_modules_dev:
