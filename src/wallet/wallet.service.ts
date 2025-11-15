@@ -1,16 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { BinanceSpotClientService } from '../binance/binance-rest-client.service';
 import { CryptoUtil } from '../common/utils/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExchangeCredentialDto } from './dto/create-exchange-credential.dto';
 import { Decimal } from '@prisma/client/runtime/binary';
+import { BinanceRestClientService } from '@/binance/binance-rest-client.service';
 
 @Injectable()
 export class WalletService {
   private readonly logger = new Logger(WalletService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly binanceClient: BinanceSpotClientService,
+    private readonly binanceClient: BinanceRestClientService,
   ) {}
 
   upsertCredentials(userId: string, dto: CreateExchangeCredentialDto) {
