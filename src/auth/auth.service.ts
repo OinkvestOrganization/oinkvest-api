@@ -60,7 +60,7 @@ export class AuthService {
 
     if (!user.emailVerificado) {
       throw new ConflictException(
-        'Conta ainda não verificada. Por favor verifique seu e-mail.',
+        'Conta ainda não verificada. Por favor, verifique seu e-mail.',
       );
     }
 

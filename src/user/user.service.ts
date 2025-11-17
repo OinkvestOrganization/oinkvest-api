@@ -69,11 +69,11 @@ export class UserService {
     });
     if (!user) {
       throw new NotFoundException(
-        `Usuário com email "${email}" não encontrado.`,
+        `Usuário não encontrado.`,
       );
     }
     if (user.status == false) {
-      throw new ConflictException(`Usuário com email "${email}" está inativo.`);
+      throw new ConflictException(`Usuário inativo.`);
     }
     return this.excluirSenha(user);
   }
