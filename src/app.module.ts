@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BinanceStreamClientModule } from './binance-stream-client/binance-stream-client.module';
 import { EmailModule } from './email/email.module';
@@ -28,6 +27,5 @@ import { WalletModule } from './wallet/wallet.module';
     BinanceStreamClientModule,
     WalletModule,
   ],
-  providers: [AppService],
 })
 export class AppModule {}
