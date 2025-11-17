@@ -5,8 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
 @Injectable()
-export class BinanceSpotClientService {
-  private readonly logger = new Logger(BinanceSpotClientService.name);
+export class BinanceRestClientService {
+  private readonly logger = new Logger(BinanceRestClientService.name);
   private readonly baseUrl =
     process.env.BINANCE_API_URL || 'https://api.binance.com';
   private readonly defaultRecvWindow =
@@ -125,13 +125,82 @@ export class BinanceSpotClientService {
     }
   }
 
-  // ===== Endpoints =====
-  /**
-   * Retorna os saldos da conta Spot (GET /api/v3/account)
-   */
-  async getAccountInfo(apiKey: string, apiSecret: string) {
-    return this.signedGet<{
-      balances: Array<{ asset: string; free: string; locked: string }>;
-    }>('/api/v3/account', apiKey, apiSecret);
+  async signedPost<T>(
+    path: string,
+    apiKey: string,
+    apiSecret: string,
+    params: Record<string, any> = {},
+  ): Promise<T> {
+    if (!Number.isFinite(this.timeOffsetMs)) {
+      await this.syncServerTime();
+    }
+
+    const attempt = async () => {
+      const query = this.buildSignedQuery(params, apiSecret);
+      const url = `${this.baseUrl}${path}`;
+      const { data } = await firstValueFrom(
+        this.http.post<T>(url, query, {
+          headers: {
+            'X-MBX-APIKEY': apiKey,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          timeout: 10000,
+        }),
+      );
+      return data;
+    };
+
+    try {
+      return await attempt();
+    } catch (e) {
+      const { code, msg } = this.extractErrInfo(e);
+      if (msg.includes('Timestamp') || msg.includes('-1021')) {
+        this.logger.warn(
+          `Timestamp fora da janela (-1021). Re-sincronizando tempo e tentando novamente...`,
+        );
+        await this.syncServerTime();
+        return attempt();
+      }
+      this.logger.error(`Erro Binance [${code}]: ${msg}`);
+      throw new Error(`Binance error: ${msg}`);
+    }
+  }
+
+  async signedDelete<T>(
+    path: string,
+    apiKey: string,
+    apiSecret: string,
+    params: Record<string, any> = {},
+  ): Promise<T> {
+    if (!Number.isFinite(this.timeOffsetMs)) {
+      await this.syncServerTime();
+    }
+
+    const attempt = async () => {
+      const query = this.buildSignedQuery(params, apiSecret);
+      const url = `${this.baseUrl}${path}?${query}`;
+      const { data } = await firstValueFrom(
+        this.http.delete<T>(url, {
+          headers: { 'X-MBX-APIKEY': apiKey },
+          timeout: 10000,
+        }),
+      );
+      return data;
+    };
+
+    try {
+      return await attempt();
+    } catch (e) {
+      const { code, msg } = this.extractErrInfo(e);
+      if (msg.includes('Timestamp') || msg.includes('-1021')) {
+        this.logger.warn(
+          `Timestamp fora da janela (-1021). Re-sincronizando tempo e tentando novamente...`,
+        );
+        await this.syncServerTime();
+        return attempt();
+      }
+      this.logger.error(`Erro Binance [${code}]: ${msg}`);
+      throw new Error(`Binance error: ${msg}`);
+    }
   }
 }

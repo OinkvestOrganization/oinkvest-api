@@ -1,16 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { BinanceSpotClientService } from '../binance/binance-spot-client.service';
 import { CryptoUtil } from '../common/utils/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExchangeCredentialDto } from './dto/create-exchange-credential.dto';
 import { Decimal } from '@prisma/client/runtime/binary';
+import { BinanceRestClientService } from '@/binance/binance-rest-client.service';
 
 @Injectable()
 export class WalletService {
   private readonly logger = new Logger(WalletService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly binanceClient: BinanceSpotClientService,
+    private readonly binanceClient: BinanceRestClientService,
   ) {}
 
   upsertCredentials(userId: string, dto: CreateExchangeCredentialDto) {
@@ -65,7 +65,9 @@ export class WalletService {
     const apiKey = CryptoUtil.decrypt(cred.apiKey);
     const apiSecret = CryptoUtil.decrypt(cred.apiSecret);
 
-    const account = await this.binanceClient.getAccountInfo(apiKey, apiSecret);
+    const account = await this.binanceClient.signedGet<{
+      balances: Array<{ asset: string; free: string; locked: string }>;
+    }>('/api/v3/account', apiKey, apiSecret);
     const balances = account.balances.filter(
       (b) => parseFloat(b.free) + parseFloat(b.locked) > 0,
     );
@@ -97,10 +99,9 @@ export class WalletService {
       const apiSecret = CryptoUtil.decrypt(cred.apiSecret);
 
       // 3) chamada na Binance
-      const account = await this.binanceClient.getAccountInfo(
-        apiKey,
-        apiSecret,
-      );
+      const account = await this.binanceClient.signedGet<{
+        balances: Array<{ asset: string; free: string; locked: string }>;
+      }>('/api/v3/account', apiKey, apiSecret);
 
       // 4) normaliza e filtra
       const items = (account?.balances ?? [])

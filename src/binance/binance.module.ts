@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { BinanceSpotClientService } from './binance-spot-client.service';
+import { BinanceRestClientService } from './binance-rest-client.service';
 
 @Module({
   imports: [HttpModule],
-  providers: [BinanceSpotClientService],
-  exports: [BinanceSpotClientService],
+  providers: [BinanceRestClientService],
+  exports: [BinanceRestClientService],
 })
 export class BinanceModule {}
