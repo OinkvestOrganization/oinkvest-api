@@ -22,26 +22,26 @@ export class AuthService {
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.usersService.createUser(createUserDto);
-    const token = randomUUID();
-    const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    // const token = randomUUID();
+    // const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
-    const verificationToken = await this.prisma.verificationToken.create({
-      data: {
-        token: token,
-        expires: expiresIn,
-        userId: user.id,
-      },
-    });
+    // const verificationToken = await this.prisma.verificationToken.create({
+    //   data: {
+    //     token: token,
+    //     expires: expiresIn,
+    //     userId: user.id,
+    //   },
+    // });
 
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      verificationToken.token,
-      user.nome,
-    );
-    return {
-      message:
-        'Cadastro realizado com sucesso. Verifique seu e-mail para ativar sua conta.',
-    };
+    // await this.emailService.sendVerificationEmail(
+    //   user.email,
+    //   verificationToken.token,
+    //   user.nome,
+    // );
+    // return {
+    //   message:
+    //     'Cadastro realizado com sucesso. Verifique seu e-mail para ativar sua conta.',
+    // };
   }
 
   async login(email: string, pass: string) {
@@ -58,11 +58,11 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    if (!user.emailVerificado) {
-      throw new ConflictException(
-        'Conta ainda não verificada. Por favor, verifique seu e-mail.',
-      );
-    }
+    // if (!user.emailVerificado) {
+    //   throw new ConflictException(
+    //     'Conta ainda não verificada. Por favor, verifique seu e-mail.',
+    //   );
+    // }
 
     const payload = { sub: user.id, email: user.email };
 
