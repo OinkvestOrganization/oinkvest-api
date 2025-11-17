@@ -9,7 +9,7 @@ export class EmailService {
 
     const subject = 'Confirme seu e-mail';
     const html = `
-      <div style="width:100%;background:#f4f4f5;">
+      <div style="width:100%;background:#f4f4f5; margin:auto">
         <div style="max-width:600px;margin:0 auto;background:#fff;padding:50px;border-radius:8px;font-family:Arial,sans-serif;line-height:1.5;color:#333;text-align:center">
           <h1 style="color:#EAB308;font-size:40px;margin:0 0 12px 0;">OINKVEST</h1>
           <h2 style="color:#000;font-size:28px;margin:0 0 20px 0;">Seja muito bem vindo ${nome}. Para prosseguir, verifique seu email</h2>
@@ -21,7 +21,7 @@ export class EmailService {
           
           <a href="${verifyUrl}" 
             style="display:inline-block;background:#7C3AED;color:#fff;padding:14px 24px;
-                    border-radius:8px;text-decoration:none;font-size:14px;font-weight:bold;width:100%">
+                    border-radius:8px;text-decoration:none;font-size:14px;font-weight:bold;width:auto">
             VERIFICAR MEU E-MAIL
           </a>
           
