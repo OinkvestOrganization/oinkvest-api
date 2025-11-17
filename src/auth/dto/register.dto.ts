@@ -39,6 +39,10 @@ export class RegisterDto {
     minLowercase: 1,
     minUppercase: 1,
     minNumbers: 1,
-  })
+  },
+  {
+    message:
+      'A senha deve ter pelo menos 8 caracteres, incluindo letra maiúscula, letra minúscula, caractere especial e número.',
+  },)
   senha: string;
 }
