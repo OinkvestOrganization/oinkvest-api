@@ -25,6 +25,7 @@ model User {
   exchangeCredentials  ExchangeCredential[]
   walletBalances       WalletBalance[]
   walletSyncLogs       WalletSyncLog[]
+  trades               Trade[]
 }
 
 model VerificationToken {
@@ -75,4 +76,32 @@ model WalletSyncLog {
   startedAt   DateTime @default(now())
   finishedAt  DateTime?
   createdAt   DateTime @default(now())
+}
+
+model Trade {
+  id                    String   @id @default(cuid())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  symbol                String   // ex: BTCUSDT
+  tradeId               BigInt   // ID da trade retornado pela Binance
+  orderId               BigInt   // ID da ordem associada
+  orderListId           BigInt   @default(-1)
+  price                 Decimal  // Preço da execução
+  quantity              Decimal  // Quantidade executada
+  quoteQuantity         Decimal  // Valor total (price * quantity)
+  commission            Decimal  // Comissão cobrada
+  commissionAsset       String   // Ativo em que foi cobrada a comissão (ex: BNB)
+  isBuyer               Boolean  // true = compra, false = venda
+  isMaker               Boolean  // true = maker, false = taker
+  isBestMatch           Boolean  @default(true) // Se foi a melhor correspondência
+  executedTime          DateTime // Quando a trade foi executada
+  lastSyncAt            DateTime @default(now()) // Última sincronização
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([userId, symbol, tradeId], name: "userId_symbol_tradeId")
+  @@index([userId])
+  @@index([symbol])
+  @@index([executedTime])
+  @@index([userId, symbol])
 }
