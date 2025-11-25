@@ -1,6 +1,8 @@
 import { UserService } from '@/user/user.service';
 import {
+  BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -12,6 +14,7 @@ import { EmailService } from '@/email/email.service';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ResetPasswordDto } from './dto/reset-password.dot';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +24,7 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
@@ -92,19 +96,28 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) {
-      this.logger.error('User not found');
-      throw new UnauthorizedException('Usuário não encontrado.');
+    const cachedEmail = await this.cacheManager.get('forgot-email-' + email);
+    if (cachedEmail) {
+      throw new BadRequestException(
+        'Você solicitou recentemente uma redefinição de senha. Por favor, aguarde um minuto antes de tentar novamente.',
+      );
     }
+    const minute = 60000;
 
-    if (!user.emailVerificado) {
-      this.logger.error('Email not verified');
-      throw new UnauthorizedException('Email não verificado.');
+    this.cacheManager.set('forgot-email-' + email, email, minute);
+
+    const user = await this.usersService.findByEmail(email);
+
+    // Envio de mensagem de sucesso mesmo após falha para evitar enumeração de email
+    if (!user || !user.emailVerificado) {
+      return {
+        message:
+          'Se um usuário com este e-mail existir e for verificado, um link para redefinição de senha será enviado.',
+      };
     }
 
     const token = randomUUID();
-    const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    const expiresIn = new Date(Date.now() + 1000 * 60 * 10); // 10 minutes
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -115,7 +128,11 @@ export class AuthService {
     });
 
     this.emailService.sendPasswordResetEmail(user.email, token);
-    return { message: 'Email de redefinição de senha enviado com sucesso.' };
+
+    return {
+      message:
+        'Se um usuário com este e-mail existir e for verificado, um link para redefinição de senha será enviado.',
+    };
   }
 
   async resetPassword(resetPassword: ResetPasswordDto) {
