@@ -29,7 +29,7 @@ export class ProfileService {
       where: { id },
       data: { nome: validName },
     });
-    return { newName: updatedName.nome };
+    return { newName: validName };
   }
 
   remove(id: number) {
