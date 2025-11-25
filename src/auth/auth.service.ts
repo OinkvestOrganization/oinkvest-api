@@ -97,12 +97,14 @@ export class AuthService {
       this.logger.error('User not found');
       throw new UnauthorizedException('Usuário não encontrado.');
     }
-    this.logger.debug('User found' + user);
+
+    if (!user.emailVerificado) {
+      this.logger.error('Email not verified');
+      throw new UnauthorizedException('Email não verificado.');
+    }
+
     const token = randomUUID();
     const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
-
-    this.logger.debug(`Token created: ${token}`);
-    this.logger.debug(`Expires in: ${expiresIn}`);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -112,7 +114,6 @@ export class AuthService {
       },
     });
 
-    this.logger.debug('Token hashed, sending email...');
     this.emailService.sendPasswordResetEmail(user.email, token);
     return { message: 'Email de redefinição de senha enviado com sucesso.' };
   }
@@ -136,14 +137,19 @@ export class AuthService {
 
     const salt = 10;
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        senha: hashedPassword,
-        passwordResetToken: null,
-        passwordResetExpires: null,
-      },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          senha: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+        },
+      });
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
     return { message: 'Senha redefinida com sucesso.' };
   }
 }
