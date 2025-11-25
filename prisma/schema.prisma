@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(uuid())
-  nome               String
-  email              String
-  senha              String
-  dataCriacao        DateTime            @default(now())
-  emailVerificado    DateTime?
-  verificationTokens VerificationToken[]
-  status Boolean @default(true)
+  id                   String               @id @default(uuid())
+  nome                 String
+  email                String
+  senha                String
+  dataCriacao          DateTime             @default(now())
+  emailVerificado      DateTime?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  verificationTokens   VerificationToken[]
+  status               Boolean              @default(true)
   exchangeCredentials  ExchangeCredential[]
   walletBalances       WalletBalance[]
   walletSyncLogs       WalletSyncLog[]
@@ -38,17 +40,17 @@ model VerificationToken {
 // --- Wallet and Binance Integration Models ---
 
 model ExchangeCredential {
-  id           String   @id @default(cuid())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String
-  exchange     String   @default("BINANCE")
-  apiKey       String   // armazenar cifrado
-  apiSecret    String   // armazenar cifrado
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  exchange  String   @default("BINANCE")
+  apiKey    String // armazenar cifrado
+  apiSecret String // armazenar cifrado
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-   @@unique([userId, exchange], name: "userId_exchange")
+  @@unique([userId, exchange], name: "userId_exchange")
 }
 
 model WalletBalance {
@@ -66,13 +68,13 @@ model WalletBalance {
 }
 
 model WalletSyncLog {
-  id          String   @id @default(cuid())
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String?
-  type        String   @default("SPOT_BALANCE")
-  status      String   @default("PENDING") // PENDING, SUCCESS, ERROR
-  message     String?  // erro ou mensagem do resultado
-  startedAt   DateTime @default(now())
-  finishedAt  DateTime?
-  createdAt   DateTime @default(now())
+  id         String    @id @default(cuid())
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String?
+  type       String    @default("SPOT_BALANCE")
+  status     String    @default("PENDING") // PENDING, SUCCESS, ERROR
+  message    String? // erro ou mensagem do resultado
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
 }
