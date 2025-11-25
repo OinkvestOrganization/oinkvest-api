@@ -1,11 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuthRequest } from '@/auth/dto/AuthRequest';
 import { Profile } from './entities/profile.entity';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ProfileService {
+  logger = new Logger(ProfileService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   profile(request: AuthRequest): Profile {
@@ -32,7 +34,33 @@ export class ProfileService {
     return { newName: validName };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} profile`;
+  async updatePassword(id: string, updatePassword: UpdatePasswordDto) {
+    const { oldPassword, newPassword } = updatePassword;
+    this.logger.debug(`Old password: ${oldPassword}`);
+    this.logger.debug(`New password: ${newPassword}`);
+
+    this.logger.debug('Checking if user exists...');
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      this.logger.error('User not found');
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    this.logger.debug('Checking if old password is correct...');
+    const isPasswordMatching = await bcrypt.compare(oldPassword, user.senha);
+    if (!isPasswordMatching) {
+      this.logger.error('Old password is incorrect');
+      throw new BadRequestException('Senha antiga incorreta');
+    }
+
+    this.logger.debug('Updating password...');
+    const hash = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, hash);
+
+    this.logger.debug('Updating user password...');
+    await this.prisma.user.update({
+      where: { id },
+      data: { senha: hashedPassword },
+    });
   }
 }
