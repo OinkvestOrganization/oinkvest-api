@@ -405,6 +405,7 @@ export class WalletTradesSummaryDto {
         totalBuyQuantity: '50.00000000',
         totalSellQuantity: '30.00000000',
         balance: '20.00000000',
+        free: '19.00000000',
         totalBuyValue: '200000.50000000',
         totalSellValue: '120000.75000000',
         buyCommission: '1.00000000',
@@ -419,6 +420,7 @@ export class WalletTradesSummaryDto {
         totalBuyQuantity: '500.00000000',
         totalSellQuantity: '300.00000000',
         balance: '200.00000000',
+        free: '198.00000000',
         totalBuyValue: '1000000.00000000',
         totalSellValue: '600000.00000000',
         buyCommission: '2.00000000',
@@ -435,6 +437,7 @@ export class WalletTradesSummaryDto {
     totalBuyQuantity: string;
     totalSellQuantity: string;
     balance: string;
+    free: string;
     totalBuyValue: string;
     totalSellValue: string;
     buyCommission: string;

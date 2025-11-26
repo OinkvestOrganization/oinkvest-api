@@ -538,6 +538,9 @@ export class TradeService {
           ? new Decimal(sellAggregate._sum.commission)
           : new Decimal(0);
 
+        // Saldo livre = balance - buyCommission (apenas comissão de compra reduz o saldo)
+        const free = balance.minus(buyCommission);
+
         return {
           symbol,
           tradeCount: stat._count.id,
@@ -546,6 +549,7 @@ export class TradeService {
           totalBuyQuantity: totalBuyQuantity.toString(),
           totalSellQuantity: totalSellQuantity.toString(),
           balance: balance.toString(),
+          free: free.toString(),
           totalBuyValue: buyAggregate._sum.quoteQuantity?.toString() || '0',
           totalSellValue: sellAggregate._sum.quoteQuantity?.toString() || '0',
           buyCommission: buyCommission.toString(),
