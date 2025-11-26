@@ -13,6 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
   id                   String               @id @default(uuid())
   nome                 String
@@ -23,7 +28,7 @@ model User {
   passwordResetToken   String?
   passwordResetExpires DateTime?
   verificationTokens   VerificationToken[]
-  status               Boolean              @default(true)
+  status               Status              @default(ACTIVE)
   exchangeCredentials  ExchangeCredential[]
   walletBalances       WalletBalance[]
   walletSyncLogs       WalletSyncLog[]

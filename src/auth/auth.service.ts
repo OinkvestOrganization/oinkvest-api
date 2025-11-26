@@ -15,6 +15,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ResetPasswordDto } from './dto/reset-password.dot';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { $Enums } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -69,6 +70,10 @@ export class AuthService {
       throw new ConflictException(
         'Conta ainda não verificada. Por favor, verifique seu e-mail.',
       );
+    }
+
+    if (user.status === $Enums.Status.INACTIVE) {
+      throw new UnauthorizedException('Credenciais inválidas.');
     }
 
     const payload = { sub: user.id, email: user.email };
@@ -154,19 +159,23 @@ export class AuthService {
 
     const salt = 10;
     const hashedPassword = await bcrypt.hash(newPassword, salt);
+
     try {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          senha: hashedPassword,
-          passwordResetToken: null,
-          passwordResetExpires: null,
-        },
-      });
+      await this.usersService.changePassword(user.id, hashedPassword);
     } catch (error) {
       this.logger.error(error);
       throw error;
     }
     return { message: 'Senha redefinida com sucesso.' };
+  }
+
+  async disableAccount(id: string) {
+    try {
+      await this.usersService.deactivate(id);
+      return { message: 'Conta desativada com sucesso.' };
+    } catch (error) {
+      this.logger.error(error);
+      throw error;
+    }
   }
 }

@@ -1,15 +1,14 @@
-import * as bcrypt from 'bcrypt'; /* eslint-disable @typescript-eslint/no-unused-vars */
-// user.service.ts
-
+import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from '@/prisma/prisma.service';
 
-import { User } from '@prisma/client';
+import { $Enums, User } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -46,11 +45,11 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(`Usuário com ID "${id}" não encontrado.`);
+      throw new NotFoundException(`Usuário não encontrado.`);
     }
 
-    if (user.status === false) {
-      throw new ConflictException(`Usuário com ID "${id}" está inativo.`);
+    if (user.status === $Enums.Status.INACTIVE) {
+      throw new ConflictException(`Usuário está inativo.`);
     }
 
     return this.excluirSenha(user);
@@ -65,15 +64,13 @@ export class UserService {
 
   async findByEmail(email: string) {
     const user = await this.prisma.user.findFirst({
-      where: { email: email, status: true },
+      where: { email: email, status: $Enums.Status.ACTIVE },
     });
     if (!user) {
-      throw new NotFoundException(
-        `Usuário não encontrado.`,
-      );
+      throw new NotFoundException(`Usuário não encontrado.`);
     }
-    if (user.status == false) {
-      throw new ConflictException(`Usuário inativo.`);
+    if (user.status === $Enums.Status.INACTIVE) {
+      throw new UnauthorizedException(`Usuário inativo.`);
     }
     return this.excluirSenha(user);
   }
@@ -84,17 +81,25 @@ export class UserService {
     });
 
     if (!userExists) {
-      throw new NotFoundException(`Usuário com ID "${id}" não encontrado.`);
+      throw new NotFoundException(`Usuário não encontrado.`);
     }
 
-    if (userExists.status == false) {
-      throw new ConflictException(`Usuário com ID "${id}" já está inativo.`);
+    if (userExists.status === $Enums.Status.INACTIVE) {
+      throw new ConflictException(`Usuário já está inativo.`);
     }
 
     const user = await this.prisma.user.update({
-      where: { id },
-      data: { status: false },
+      where: { id: id },
+      data: {
+        status: $Enums.Status.INACTIVE,
+        email: '',
+        senha: '',
+        emailVerificado: null,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      },
     });
+
     return this.excluirSenha(user);
   }
 
@@ -110,5 +115,17 @@ export class UserService {
       data: { emailVerificado: new Date(Date.now()).toISOString() },
     });
     return this.excluirSenha(userActivated);
+  }
+
+  async changePassword(id: string, hashedPassword: string) {
+    const user = await this.prisma.user.update({
+      where: { id: id },
+      data: {
+        senha: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      },
+    });
+    return this.excluirSenha(user);
   }
 }
