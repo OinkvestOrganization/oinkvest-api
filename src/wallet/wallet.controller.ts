@@ -27,6 +27,8 @@ import {
   ListTradesResponse,
   SyncTradesResponse,
   TradeStatsDto,
+  AllTradesSyncResponse,
+  WalletTradesSummaryDto,
 } from './dto/trade.dto';
 import { WalletService } from './wallet.service';
 import { TradeService } from './trade.service';
@@ -310,6 +312,71 @@ export class WalletController {
     }
 
     return this.tradeService.getTradeStats(userId, symbol);
+  }
+
+  // ==================== NOVAS FUNCIONALIDADES ====================
+
+  @ApiOperation({
+    summary: 'Sincronizar TODAS as trades históricas da carteira',
+    description: `
+    Sincroniza o histórico COMPLETO de todas as trades da sua carteira Binance.
+    
+    Este endpoint:
+    1. Descobre automaticamente todos os símbolos USDT disponíveis na exchange
+    2. Sincroniza o histórico completo de cada símbolo
+    3. Armazena tudo no banco de dados para análise
+    
+    **Importante:**
+    - Esta operação pode levar alguns minutos se você tem muitas trades
+    - Não é necessário fornecer os símbolos - o sistema descobre automaticamente
+    - Trades duplicadas não serão armazenadas duas vezes (usa upsert)
+    
+    **Resposta inclui:**
+    - Total de trades sincronizadas
+    - Total de símbolos processados
+    - Resumo de sucessos e falhas
+    `,
+  })
+  @ApiCreatedResponse({
+    type: AllTradesSyncResponse,
+    description: 'Sincronização completa de todas as trades',
+  })
+  @Post('sync/trades/all')
+  async syncAllTrades(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.log(
+      `Iniciando sincronização COMPLETA de todas as trades para ${userId}`,
+    );
+    return this.tradeService.syncAllTradesForWallet(userId);
+  }
+
+  @ApiOperation({
+    summary: 'Obter resumo completo do histórico de trades da carteira',
+    description: `
+    Retorna um resumo consolidado de TODAS as trades históricas da sua carteira.
+    
+    **Informações retornadas:**
+    - Total de trades em toda a carteira
+    - Total de símbolos diferentes negociados
+    - Contagem de compras vs vendas
+    - Comissão total paga
+    - Data da primeira e última trade
+    - Breakdown por símbolo
+    
+    Esta é uma excelente forma de ver um overview rápido do seu histórico de trades.
+    `,
+  })
+  @ApiOkResponse({
+    type: WalletTradesSummaryDto,
+    description: 'Resumo completo do histórico de trades',
+  })
+  @Get('trades/summary')
+  async getTradesSummary(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.log(`Gerando resumo de trades para ${userId}`);
+    return this.tradeService.getWalletTradesSummary(userId);
   }
 
   @ApiOperation({

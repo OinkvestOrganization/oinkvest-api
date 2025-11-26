@@ -275,3 +275,122 @@ export class TradeStatsDto {
   })
   lastTradeDate: Date;
 }
+
+export class AllTradesSyncResponse {
+  @ApiProperty({
+    example: 'completed',
+    description: 'Status da sincronização',
+  })
+  status: string;
+
+  @ApiProperty({
+    example: 50,
+    description: 'Total de símbolos sincronizados',
+  })
+  totalSymbols: number;
+
+  @ApiProperty({
+    example: 48,
+    description: 'Total de sincronizações bem-sucedidas',
+  })
+  successfulSyncs: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Total de sincronizações com falha',
+  })
+  failedSyncs: number;
+
+  @ApiProperty({
+    example: 5000,
+    description: 'Total de trades sincronizadas nesta execução',
+  })
+  totalTradesSynced: number;
+
+  @ApiProperty({
+    example: 25000,
+    description: 'Total de trades no banco para todos os símbolos',
+  })
+  totalTradesInDatabase: number;
+
+  @ApiProperty({
+    type: [SyncTradesResponse],
+    description: 'Resultado detalhado por símbolo',
+  })
+  symbols: SyncTradesResponse[];
+
+  @ApiProperty({
+    example:
+      'Sincronização completa finalizada. 48/50 símbolos sincronizados com sucesso.',
+    description: 'Mensagem descritiva do resultado',
+  })
+  message: string;
+}
+
+export class WalletTradesSummaryDto {
+  @ApiProperty({
+    example: 25000,
+    description: 'Total de trades na carteira',
+  })
+  totalTrades: number;
+
+  @ApiProperty({
+    example: 50,
+    description: 'Total de símbolos diferentes negociados',
+  })
+  totalSymbols: number;
+
+  @ApiProperty({
+    example: 12500,
+    description: 'Total de transações de compra',
+  })
+  totalBuys: number;
+
+  @ApiProperty({
+    example: 12500,
+    description: 'Total de transações de venda',
+  })
+  totalSells: number;
+
+  @ApiProperty({
+    example: '25.50000000',
+    description: 'Comissão total paga em toda a carteira',
+  })
+  totalCommissionPaid: string;
+
+  @ApiProperty({
+    example: '2024-01-15T10:30:00.000Z',
+    description: 'Data da primeira trade registrada',
+    format: 'date-time',
+  })
+  firstTradeDate: Date;
+
+  @ApiProperty({
+    example: '2025-11-17T23:30:00.000Z',
+    description: 'Data da última trade registrada',
+    format: 'date-time',
+  })
+  lastTradeDate: Date;
+
+  @ApiProperty({
+    type: [Object],
+    description: 'Resumo de trades por símbolo',
+    example: [
+      {
+        symbol: 'BTCUSDT',
+        tradeCount: 150,
+        totalCommission: '2.50000000',
+      },
+      {
+        symbol: 'ETHUSDT',
+        tradeCount: 200,
+        totalCommission: '3.50000000',
+      },
+    ],
+  })
+  symbols: Array<{
+    symbol: string;
+    tradeCount: number;
+    totalCommission: string;
+  }>;
+}

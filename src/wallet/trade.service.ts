@@ -328,4 +328,173 @@ export class TradeService {
       orderBy: { executedTime: 'desc' },
     });
   }
+
+  /**
+   * Descobre todos os símbolos únicos que o usuário já negociou
+   * Busca na Binance usando a API de exchange info
+   */
+  async discoverUserSymbols(userId: string): Promise<string[]> {
+    const cred = await this.prisma.exchangeCredential.findUnique({
+      where: { userId_exchange: { userId, exchange: 'BINANCE' } },
+    });
+
+    if (!cred) {
+      throw new NotFoundException('Credenciais da Binance não encontradas');
+    }
+
+    this.logger.log(`Descobrindo símbolos para o usuário ${userId}`);
+
+    try {
+      // Usar HttpService diretamente para chamadas públicas
+      const response = await fetch(
+        'https://api.binance.com/api/v3/exchangeInfo',
+      );
+      if (!response.ok) {
+        throw new Error(`Falha ao obter exchange info: ${response.status}`);
+      }
+
+      const exchangeInfo = await response.json();
+
+      if (!exchangeInfo || !exchangeInfo.symbols) {
+        this.logger.error('Não foi possível obter exchange info');
+        throw new Error('Falha ao obter informações da exchange');
+      }
+
+      // Obter apenas símbolos USDT (padrão mais comum)
+      const usdtSymbols = exchangeInfo.symbols
+        .filter(
+          (s: any) =>
+            s.status === 'TRADING' &&
+            s.baseAsset &&
+            s.quoteAsset === 'USDT' &&
+            !s.baseAsset.startsWith('LD') &&
+            !s.baseAsset.startsWith('ST'), // Exclude staking tokens
+        )
+        .map((s: any) => s.symbol)
+        .slice(0, 100); // Limita aos 100 primeiros para performance
+
+      this.logger.log(
+        `Descobertos ${usdtSymbols.length} símbolos para sincronizar`,
+      );
+
+      return usdtSymbols;
+    } catch (error) {
+      this.logger.error(`Erro ao descobrir símbolos: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Sincroniza TODAS as trades histórias de uma carteira
+   * Descobre automaticamente quais símbolos o usuário já negociou
+   */
+  async syncAllTradesForWallet(
+    userId: string,
+    options?: { maxSymbols?: number; skipSymbols?: string[] },
+  ) {
+    this.logger.log(
+      `Iniciando sincronização COMPLETA de histórico para usuário ${userId}`,
+    );
+
+    const maxSymbols = options?.maxSymbols || 100;
+    const skipSymbols = new Set(options?.skipSymbols || []);
+
+    let allSymbols: string[];
+    try {
+      allSymbols = await this.discoverUserSymbols(userId);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+
+    // Filtrar símbolos a pular e aplicar limite
+    const symbolsToSync = allSymbols
+      .filter((s) => !skipSymbols.has(s))
+      .slice(0, maxSymbols);
+
+    this.logger.log(
+      `Sincronizando ${symbolsToSync.length} símbolos para ${userId}`,
+    );
+
+    const results = await this.syncTradesForMultipleSymbols(
+      userId,
+      symbolsToSync,
+    );
+
+    // Compilar estatísticas
+    const successfulSyncs = results.filter((r) => !r.error);
+    const failedSyncs = results.filter((r) => r.error);
+
+    const totalSynced = successfulSyncs.reduce((sum, r) => sum + r.synced, 0);
+    const totalInDatabase = successfulSyncs.reduce(
+      (sum, r) => sum + r.totalInDatabase,
+      0,
+    );
+
+    return {
+      status: 'completed',
+      totalSymbols: symbolsToSync.length,
+      successfulSyncs: successfulSyncs.length,
+      failedSyncs: failedSyncs.length,
+      totalTradesSynced: totalSynced,
+      totalTradesInDatabase: totalInDatabase,
+      symbols: results,
+      message: `Sincronização completa finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+    };
+  }
+
+  /**
+   * Retorna resume do histórico completo de trades da carteira
+   */
+  async getWalletTradesSummary(userId: string) {
+    const stats = await this.prisma.trade.groupBy({
+      by: ['symbol'],
+      where: { userId },
+      _count: { id: true },
+      _sum: { commission: true },
+      orderBy: { _count: { id: 'desc' } },
+    });
+
+    const totalTrades = await this.prisma.trade.count({ where: { userId } });
+
+    const tradeDates = await this.prisma.trade.findMany({
+      where: { userId },
+      select: { executedTime: true },
+      orderBy: { executedTime: 'asc' },
+      take: 2,
+    });
+
+    const buyTrades = await this.prisma.trade.count({
+      where: { userId, isBuyer: true },
+    });
+
+    const sellTrades = await this.prisma.trade.count({
+      where: { userId, isBuyer: false },
+    });
+
+    const totalCommission = await this.prisma.trade.aggregate({
+      where: { userId },
+      _sum: { commission: true },
+    });
+
+    return {
+      totalTrades,
+      totalSymbols: stats.length,
+      totalBuys: buyTrades,
+      totalSells: sellTrades,
+      totalCommissionPaid: totalCommission._sum.commission?.toString() || '0',
+      firstTradeDate: tradeDates.length > 0 ? tradeDates[0].executedTime : null,
+      lastTradeDate:
+        tradeDates.length > 0
+          ? tradeDates[tradeDates.length - 1].executedTime
+          : null,
+      symbols: stats.map((s) => ({
+        symbol: s.symbol,
+        tradeCount: s._count.id,
+        totalCommission: s._sum.commission?.toString() || '0',
+      })),
+    };
+  }
 }
