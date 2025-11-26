@@ -442,6 +442,25 @@ export class TradeService {
   }
 
   /**
+   * Retorna comissão agrupada por ativo
+   * Essencial para entender em qual ativo a comissão foi cobrada
+   */
+  async getCommissionBreakdown(userId: string) {
+    const commissionByAsset = await this.prisma.trade.groupBy({
+      by: ['commissionAsset'],
+      where: { userId },
+      _sum: { commission: true },
+      _count: { id: true },
+    });
+
+    return commissionByAsset.map((c) => ({
+      asset: c.commissionAsset,
+      amount: c._sum.commission?.toString() || '0',
+      tradeCount: c._count.id,
+    }));
+  }
+
+  /**
    * Retorna resume do histórico completo de trades da carteira
    * Inclui detalhes por símbolo: buys, sells, saldo, valores
    */
@@ -493,12 +512,12 @@ export class TradeService {
         // Agregações por tipo de trade
         const buyAggregate = await this.prisma.trade.aggregate({
           where: { userId, symbol, isBuyer: true },
-          _sum: { quantity: true, quoteQuantity: true },
+          _sum: { quantity: true, quoteQuantity: true, commission: true },
         });
 
         const sellAggregate = await this.prisma.trade.aggregate({
           where: { userId, symbol, isBuyer: false },
-          _sum: { quantity: true, quoteQuantity: true },
+          _sum: { quantity: true, quoteQuantity: true, commission: true },
         });
 
         // Calcular saldo
@@ -511,6 +530,14 @@ export class TradeService {
 
         const balance = totalBuyQuantity.minus(totalSellQuantity);
 
+        // Comissão por tipo de trade
+        const buyCommission = buyAggregate._sum.commission
+          ? new Decimal(buyAggregate._sum.commission)
+          : new Decimal(0);
+        const sellCommission = sellAggregate._sum.commission
+          ? new Decimal(sellAggregate._sum.commission)
+          : new Decimal(0);
+
         return {
           symbol,
           tradeCount: stat._count.id,
@@ -521,6 +548,8 @@ export class TradeService {
           balance: balance.toString(),
           totalBuyValue: buyAggregate._sum.quoteQuantity?.toString() || '0',
           totalSellValue: sellAggregate._sum.quoteQuantity?.toString() || '0',
+          buyCommission: buyCommission.toString(),
+          sellCommission: sellCommission.toString(),
           totalCommission: stat._sum.commission?.toString() || '0',
         };
       }),
@@ -532,6 +561,7 @@ export class TradeService {
       totalBuys: buyTrades,
       totalSells: sellTrades,
       totalCommissionPaid: totalCommission._sum.commission?.toString() || '0',
+      commissionBreakdown: await this.getCommissionBreakdown(userId),
       firstTradeDate: tradeDates.length > 0 ? tradeDates[0].executedTime : null,
       lastTradeDate:
         tradeDates.length > 0

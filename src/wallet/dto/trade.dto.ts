@@ -358,6 +358,28 @@ export class WalletTradesSummaryDto {
   totalCommissionPaid: string;
 
   @ApiProperty({
+    type: [Object],
+    description: 'Breakdown da comissão por ativo cobrado',
+    example: [
+      {
+        asset: 'USDT',
+        amount: '100.50000000',
+        tradeCount: 500,
+      },
+      {
+        asset: 'BNB',
+        amount: '5.20000000',
+        tradeCount: 300,
+      },
+    ],
+  })
+  commissionBreakdown: Array<{
+    asset: string;
+    amount: string;
+    tradeCount: number;
+  }>;
+
+  @ApiProperty({
     example: '2024-01-15T10:30:00.000Z',
     description: 'Data da primeira trade registrada',
     format: 'date-time',
@@ -385,6 +407,8 @@ export class WalletTradesSummaryDto {
         balance: '20.00000000',
         totalBuyValue: '200000.50000000',
         totalSellValue: '120000.75000000',
+        buyCommission: '1.00000000',
+        sellCommission: '1.50000000',
         totalCommission: '2.50000000',
       },
       {
@@ -397,6 +421,8 @@ export class WalletTradesSummaryDto {
         balance: '200.00000000',
         totalBuyValue: '1000000.00000000',
         totalSellValue: '600000.00000000',
+        buyCommission: '2.00000000',
+        sellCommission: '1.50000000',
         totalCommission: '3.50000000',
       },
     ],
@@ -411,6 +437,8 @@ export class WalletTradesSummaryDto {
     balance: string;
     totalBuyValue: string;
     totalSellValue: string;
+    buyCommission: string;
+    sellCommission: string;
     totalCommission: string;
   }>;
 }
