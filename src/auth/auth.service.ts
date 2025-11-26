@@ -4,7 +4,9 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -124,6 +126,8 @@ export class AuthService {
     const token = randomUUID();
     const expiresIn = new Date(Date.now() + 1000 * 60 * 10); // 10 minutes
 
+    await this.emailService.sendPasswordResetEmail(user.email, token);
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -131,8 +135,6 @@ export class AuthService {
         passwordResetExpires: expiresIn,
       },
     });
-
-    this.emailService.sendPasswordResetEmail(user.email, token);
 
     return {
       message:
@@ -164,7 +166,7 @@ export class AuthService {
       await this.usersService.changePassword(user.id, hashedPassword);
     } catch (error) {
       this.logger.error(error);
-      throw error;
+      throw new InternalServerErrorException(error);
     }
     return { message: 'Senha redefinida com sucesso.' };
   }
@@ -175,7 +177,13 @@ export class AuthService {
       return { message: 'Conta desativada com sucesso.' };
     } catch (error) {
       this.logger.error(error);
-      throw error;
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(error);
     }
   }
 }
