@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Decimal } from '@prisma/client/runtime/binary';
 
 export class TradeDto {
   @ApiProperty({
@@ -284,31 +283,31 @@ export class AllTradesSyncResponse {
   status: string;
 
   @ApiProperty({
-    example: 50,
-    description: 'Total de símbolos sincronizados',
+    example: 1200,
+    description: 'Total de símbolos USDT disponíveis sincronizados',
   })
   totalSymbols: number;
 
   @ApiProperty({
-    example: 48,
+    example: 1180,
     description: 'Total de sincronizações bem-sucedidas',
   })
   successfulSyncs: number;
 
   @ApiProperty({
-    example: 2,
+    example: 20,
     description: 'Total de sincronizações com falha',
   })
   failedSyncs: number;
 
   @ApiProperty({
-    example: 5000,
+    example: 50000,
     description: 'Total de trades sincronizadas nesta execução',
   })
   totalTradesSynced: number;
 
   @ApiProperty({
-    example: 25000,
+    example: 250000,
     description: 'Total de trades no banco para todos os símbolos',
   })
   totalTradesInDatabase: number;
@@ -321,7 +320,7 @@ export class AllTradesSyncResponse {
 
   @ApiProperty({
     example:
-      'Sincronização completa finalizada. 48/50 símbolos sincronizados com sucesso.',
+      'Sincronização completa finalizada. 1180/1200 símbolos sincronizados com sucesso.',
     description: 'Mensagem descritiva do resultado',
   })
   message: string;
@@ -329,31 +328,31 @@ export class AllTradesSyncResponse {
 
 export class WalletTradesSummaryDto {
   @ApiProperty({
-    example: 25000,
-    description: 'Total de trades na carteira',
+    example: 250000,
+    description: 'Total de trades em toda a carteira',
   })
   totalTrades: number;
 
   @ApiProperty({
-    example: 50,
-    description: 'Total de símbolos diferentes negociados',
+    example: 1200,
+    description: 'Total de símbolos USDT diferentes negociados',
   })
   totalSymbols: number;
 
   @ApiProperty({
-    example: 12500,
+    example: 125000,
     description: 'Total de transações de compra',
   })
   totalBuys: number;
 
   @ApiProperty({
-    example: 12500,
+    example: 125000,
     description: 'Total de transações de venda',
   })
   totalSells: number;
 
   @ApiProperty({
-    example: '25.50000000',
+    example: '250.50000000',
     description: 'Comissão total paga em toda a carteira',
   })
   totalCommissionPaid: string;

@@ -360,7 +360,7 @@ export class TradeService {
         throw new Error('Falha ao obter informações da exchange');
       }
 
-      // Obter apenas símbolos USDT (padrão mais comum)
+      // Obter TODOS os símbolos USDT disponíveis para Spot Trading
       const usdtSymbols = exchangeInfo.symbols
         .filter(
           (s: any) =>
@@ -370,11 +370,10 @@ export class TradeService {
             !s.baseAsset.startsWith('LD') &&
             !s.baseAsset.startsWith('ST'), // Exclude staking tokens
         )
-        .map((s: any) => s.symbol)
-        .slice(0, 100); // Limita aos 100 primeiros para performance
+        .map((s: any) => s.symbol);
 
       this.logger.log(
-        `Descobertos ${usdtSymbols.length} símbolos para sincronizar`,
+        `Descobertos ${usdtSymbols.length} símbolos USDT disponíveis para sincronizar`,
       );
 
       return usdtSymbols;
@@ -385,18 +384,17 @@ export class TradeService {
   }
 
   /**
-   * Sincroniza TODAS as trades histórias de uma carteira
-   * Descobre automaticamente quais símbolos o usuário já negociou
+   * Sincroniza TODAS as trades históricas de uma carteira
+   * Descobre automaticamente e sincroniza TODOS os símbolos USDT disponíveis
    */
   async syncAllTradesForWallet(
     userId: string,
-    options?: { maxSymbols?: number; skipSymbols?: string[] },
+    options?: { skipSymbols?: string[] },
   ) {
     this.logger.log(
       `Iniciando sincronização COMPLETA de histórico para usuário ${userId}`,
     );
 
-    const maxSymbols = options?.maxSymbols || 100;
     const skipSymbols = new Set(options?.skipSymbols || []);
 
     let allSymbols: string[];
@@ -409,10 +407,8 @@ export class TradeService {
       throw error;
     }
 
-    // Filtrar símbolos a pular e aplicar limite
-    const symbolsToSync = allSymbols
-      .filter((s) => !skipSymbols.has(s))
-      .slice(0, maxSymbols);
+    // Sincronizar TODOS os símbolos encontrados (sem limite)
+    const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
 
     this.logger.log(
       `Sincronizando ${symbolsToSync.length} símbolos para ${userId}`,

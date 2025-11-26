@@ -319,34 +319,42 @@ export class WalletController {
   @ApiOperation({
     summary: 'Sincronizar TODAS as trades históricas da carteira',
     description: `
-    Sincroniza o histórico COMPLETO de todas as trades da sua carteira Binance.
+    Sincroniza o histórico COMPLETO de TODAS as trades da sua carteira Binance.
     
     Este endpoint:
-    1. Descobre automaticamente todos os símbolos USDT disponíveis na exchange
-    2. Sincroniza o histórico completo de cada símbolo
-    3. Armazena tudo no banco de dados para análise
+    1. Descobre automaticamente TODOS os símbolos USDT disponíveis para Spot Trading na exchange
+    2. Sincroniza o histórico completo de cada símbolo usando paginação fromId
+    3. Armazena tudo no banco de dados para análise profunda
+    
+    **Características:**
+    - ✅ Sincroniza SEM limite de símbolos (TODOS os pares USDT)
+    - ✅ SEM limite de tempo (API Binance não limita, diferente da web interface 6 meses)
+    - ✅ Sem precisar informar símbolos - descobre automaticamente
+    - ✅ Trades duplicadas não são armazenadas duas vezes (usa upsert)
+    - ✅ Processamento robusto com retry de tempo
     
     **Importante:**
-    - Esta operação pode levar alguns minutos se você tem muitas trades
-    - Não é necessário fornecer os símbolos - o sistema descobre automaticamente
-    - Trades duplicadas não serão armazenadas duas vezes (usa upsert)
+    - Esta operação pode levar VÁRIOS MINUTOS se você tem muitas trades
+    - O sistema sincroniza em background, você pode consultar o progresso
+    - Recomenda-se não interromper até a conclusão
     
     **Resposta inclui:**
-    - Total de trades sincronizadas
+    - Total de trades sincronizadas nesta execução
+    - Total geral de trades no banco para todos os símbolos
     - Total de símbolos processados
-    - Resumo de sucessos e falhas
+    - Resumo detalhado de sucessos e falhas por símbolo
     `,
   })
   @ApiCreatedResponse({
     type: AllTradesSyncResponse,
-    description: 'Sincronização completa de todas as trades',
+    description: 'Sincronização completa de TODAS as trades',
   })
   @Post('sync/trades/all')
   async syncAllTrades(@Req() req): Promise<any> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
 
     this.logger.log(
-      `Iniciando sincronização COMPLETA de todas as trades para ${userId}`,
+      `Iniciando sincronização COMPLETA de TODAS as trades para ${userId}`,
     );
     return this.tradeService.syncAllTradesForWallet(userId);
   }
