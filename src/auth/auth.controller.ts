@@ -109,11 +109,4 @@ export class AuthController {
   resetPassword(@Body() resetPassword: ResetPasswordDto) {
     return this.authService.resetPassword(resetPassword);
   }
-
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @Post('disable-account')
-  disableAccount(@Req() req: AuthRequest) {
-    return this.authService.disableAccount(req.user.id);
-  }
 }

@@ -156,7 +156,7 @@ export class AuthService {
 
     if (!user) {
       this.logger.error('Token inválido');
-      return;
+      throw new UnauthorizedException('Token inválido');
     }
 
     const salt = 10;
