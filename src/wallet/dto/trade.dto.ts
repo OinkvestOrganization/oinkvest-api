@@ -373,16 +373,30 @@ export class WalletTradesSummaryDto {
 
   @ApiProperty({
     type: [Object],
-    description: 'Resumo de trades por símbolo',
+    description: 'Resumo detalhado de trades por símbolo',
     example: [
       {
         symbol: 'BTCUSDT',
         tradeCount: 150,
+        buyCount: 75,
+        sellCount: 75,
+        totalBuyQuantity: '50.00000000',
+        totalSellQuantity: '30.00000000',
+        balance: '20.00000000',
+        totalBuyValue: '200000.50000000',
+        totalSellValue: '120000.75000000',
         totalCommission: '2.50000000',
       },
       {
         symbol: 'ETHUSDT',
         tradeCount: 200,
+        buyCount: 100,
+        sellCount: 100,
+        totalBuyQuantity: '500.00000000',
+        totalSellQuantity: '300.00000000',
+        balance: '200.00000000',
+        totalBuyValue: '1000000.00000000',
+        totalSellValue: '600000.00000000',
         totalCommission: '3.50000000',
       },
     ],
@@ -390,6 +404,13 @@ export class WalletTradesSummaryDto {
   symbols: Array<{
     symbol: string;
     tradeCount: number;
+    buyCount: number;
+    sellCount: number;
+    totalBuyQuantity: string;
+    totalSellQuantity: string;
+    balance: string;
+    totalBuyValue: string;
+    totalSellValue: string;
     totalCommission: string;
   }>;
 }

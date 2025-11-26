@@ -443,6 +443,7 @@ export class TradeService {
 
   /**
    * Retorna resume do histórico completo de trades da carteira
+   * Inclui detalhes por símbolo: buys, sells, saldo, valores
    */
   async getWalletTradesSummary(userId: string) {
     const stats = await this.prisma.trade.groupBy({
@@ -475,6 +476,56 @@ export class TradeService {
       _sum: { commission: true },
     });
 
+    // Obter detalhes por símbolo
+    const symbolDetails = await Promise.all(
+      stats.map(async (stat) => {
+        const symbol = stat.symbol;
+
+        // Total de compras e vendas por símbolo
+        const buyTradesCount = await this.prisma.trade.count({
+          where: { userId, symbol, isBuyer: true },
+        });
+
+        const sellTradesCount = await this.prisma.trade.count({
+          where: { userId, symbol, isBuyer: false },
+        });
+
+        // Agregações por tipo de trade
+        const buyAggregate = await this.prisma.trade.aggregate({
+          where: { userId, symbol, isBuyer: true },
+          _sum: { quantity: true, quoteQuantity: true },
+        });
+
+        const sellAggregate = await this.prisma.trade.aggregate({
+          where: { userId, symbol, isBuyer: false },
+          _sum: { quantity: true, quoteQuantity: true },
+        });
+
+        // Calcular saldo
+        const totalBuyQuantity = buyAggregate._sum.quantity
+          ? new Decimal(buyAggregate._sum.quantity)
+          : new Decimal(0);
+        const totalSellQuantity = sellAggregate._sum.quantity
+          ? new Decimal(sellAggregate._sum.quantity)
+          : new Decimal(0);
+
+        const balance = totalBuyQuantity.minus(totalSellQuantity);
+
+        return {
+          symbol,
+          tradeCount: stat._count.id,
+          buyCount: buyTradesCount,
+          sellCount: sellTradesCount,
+          totalBuyQuantity: totalBuyQuantity.toString(),
+          totalSellQuantity: totalSellQuantity.toString(),
+          balance: balance.toString(),
+          totalBuyValue: buyAggregate._sum.quoteQuantity?.toString() || '0',
+          totalSellValue: sellAggregate._sum.quoteQuantity?.toString() || '0',
+          totalCommission: stat._sum.commission?.toString() || '0',
+        };
+      }),
+    );
+
     return {
       totalTrades,
       totalSymbols: stats.length,
@@ -486,11 +537,7 @@ export class TradeService {
         tradeDates.length > 0
           ? tradeDates[tradeDates.length - 1].executedTime
           : null,
-      symbols: stats.map((s) => ({
-        symbol: s.symbol,
-        tradeCount: s._count.id,
-        totalCommission: s._sum.commission?.toString() || '0',
-      })),
+      symbols: symbolDetails,
     };
   }
 }
