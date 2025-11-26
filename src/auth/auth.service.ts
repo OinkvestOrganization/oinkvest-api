@@ -170,20 +170,4 @@ export class AuthService {
     }
     return { message: 'Senha redefinida com sucesso.' };
   }
-
-  async disableAccount(id: string) {
-    try {
-      await this.usersService.deactivate(id);
-      return { message: 'Conta desativada com sucesso.' };
-    } catch (error) {
-      this.logger.error(error);
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(error);
-    }
-  }
 }

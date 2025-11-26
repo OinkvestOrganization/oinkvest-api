@@ -28,7 +28,7 @@ model User {
   passwordResetToken   String?
   passwordResetExpires DateTime?
   verificationTokens   VerificationToken[]
-  status               Status              @default(ACTIVE)
+  status               Status               @default(ACTIVE)
   exchangeCredentials  ExchangeCredential[]
   walletBalances       WalletBalance[]
   walletSyncLogs       WalletSyncLog[]
