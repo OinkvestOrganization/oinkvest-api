@@ -11,6 +11,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SymbolsModule } from './symbols/symbols.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SymbolsModule } from './symbols/symbols.module';
     BinanceStreamClientModule,
     WalletModule,
     SymbolsModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

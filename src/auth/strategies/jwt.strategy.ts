@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { UserService } from '@/user/user.service';
+import { $Enums } from '@prisma/client';
 
 const cookieExtractor = (req: Request): string | null => {
   let token = null;
@@ -33,6 +34,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findById(payload.sub);
 
     if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado.');
+    }
+
+    if (user.status === $Enums.Status.INACTIVE) {
       throw new UnauthorizedException('Usuário não encontrado.');
     }
 
