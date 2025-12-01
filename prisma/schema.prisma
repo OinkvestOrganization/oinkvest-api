@@ -26,6 +26,8 @@ model User {
   walletBalances       WalletBalance[]
   walletSyncLogs       WalletSyncLog[]
   trades               Trade[]
+  orders               Order[]
+  orderLogs            OrderLog[]
 }
 
 model VerificationToken {
@@ -105,3 +107,58 @@ model Trade {
   @@index([executedTime])
   @@index([userId, symbol])
 }
+
+model Order {
+  id                      String      @id @default(cuid())
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                  String
+
+  // Identifiers
+  orderId                 BigInt      // ID da ordem na Binance
+  clientOrderId           String      // ID customizado
+
+  // Order Details
+  symbol                  String      // BTCUSDT
+  side                    String      // BUY ou SELL
+  type                    String      // MARKET
+  
+  // Quantities & Prices
+  quantity                Decimal     // Quantidade original
+  executedQty             Decimal     // Executada
+  cumulativeQuoteQty      Decimal     @default(0) // Valor total em USDT
+  
+  // Status
+  status                  String      // FILLED, PARTIALLY_FILLED, CANCELED, REJECTED
+  
+  // Timing
+  transactTime            DateTime    // Quando foi criada na Binance
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  
+  @@unique([userId, orderId], name: "userId_orderId")
+  @@index([userId])
+  @@index([userId, symbol])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderLog {
+  id          String   @id @default(cuid())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?
+  
+  orderId     BigInt
+  action      String   // PLACE, QUERY
+  status      String   // SUCCESS, FAILURE
+  message     String?
+  
+  requestData Json?    // Dados enviados à Binance
+  responseData Json?   // Resposta da Binance
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([orderId])
+  @@index([createdAt])
+}
+

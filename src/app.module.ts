@@ -9,6 +9,7 @@ import { KlineServerModule } from './kline-server/kline-server.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { WalletModule } from './wallet/wallet.module';
+import { TradeModule } from './trade/trade.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WalletModule } from './wallet/wallet.module';
     KlineAdminModule,
     BinanceStreamClientModule,
     WalletModule,
+    TradeModule,
   ],
 })
 export class AppModule {}
