@@ -107,17 +107,9 @@ export class TradeController {
   })
   @ApiNotFoundResponse({ description: 'Ordem não encontrada' })
   @Get('orders/:orderId')
-  async getOrder(
-    @Req() req,
-    @Param('orderId') orderId: string,
-    @Query('symbol') symbol: string,
-  ) {
-    if (!symbol) {
-      throw new Error('Parâmetro "symbol" é obrigatório');
-    }
-
+  async getOrder(@Req() req, @Param('orderId') orderId: string) {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-    return this.tradeService.getOrder(userId, BigInt(orderId), symbol);
+    return this.tradeService.getOrder(userId, BigInt(orderId));
   }
 
   @ApiOperation({ summary: 'Listar histórico de ordens executadas' })

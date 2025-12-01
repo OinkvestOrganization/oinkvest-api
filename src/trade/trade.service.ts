@@ -13,15 +13,106 @@ import {
   ListOrdersQueryDto,
   ListOrdersResponseDto,
 } from './dto';
+import { BinanceErrorHandler } from './utils/binance-error-handler';
 
 @Injectable()
 export class TradeService {
   private readonly logger = new Logger(TradeService.name);
+  private exchangeInfoCache: Map<string, any> = new Map();
+  private exchangeInfoCacheTTL = 60 * 60 * 1000; // 1 hora
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly binanceClient: BinanceRestClientService,
   ) {}
+
+  /**
+   * Busca informações de exchange da Binance (com cache)
+   */
+  private async getExchangeInfo(apiKey: string, apiSecret: string) {
+    const cacheKey = 'exchangeInfo';
+    const cached = this.exchangeInfoCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < this.exchangeInfoCacheTTL) {
+      return cached.data;
+    }
+
+    try {
+      const exchangeInfo = await this.binanceClient.signedGet<any>(
+        '/api/v3/exchangeInfo',
+        apiKey,
+        apiSecret,
+      );
+
+      this.exchangeInfoCache.set(cacheKey, {
+        data: exchangeInfo,
+        timestamp: Date.now(),
+      });
+
+      return exchangeInfo;
+    } catch (error) {
+      this.logger.warn(`Falha ao buscar exchangeInfo: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Valida quantidade contra filtros da Binance
+   */
+  private validateSymbolFilters(
+    symbol: string,
+    quantity: string,
+    exchangeInfo: any,
+  ): string | null {
+    if (!exchangeInfo) return null;
+
+    const symbolInfo = exchangeInfo.symbols?.find((s) => s.symbol === symbol);
+    if (!symbolInfo) return `Símbolo ${symbol} não encontrado na Binance`;
+
+    const lotSizeFilter = symbolInfo.filters?.find(
+      (f) => f.filterType === 'LOT_SIZE',
+    );
+    if (lotSizeFilter) {
+      const qty = parseFloat(quantity);
+      const minQty = parseFloat(lotSizeFilter.minQty);
+      const maxQty = parseFloat(lotSizeFilter.maxQty);
+
+      if (qty < minQty || qty > maxQty) {
+        return `Quantidade deve estar entre ${minQty} e ${maxQty}`;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Valida saldo disponível para MARKET BUY
+   */
+  private async validateBalance(
+    userId: string,
+    side: string,
+    symbol: string,
+    quoteOrderQty?: string,
+  ): Promise<string | null> {
+    if (side !== 'BUY' || !quoteOrderQty) return null;
+
+    const usdt = await this.prisma.walletBalance.findUnique({
+      where: { userId_asset: { userId, asset: 'USDT' } },
+    });
+
+    if (!usdt) {
+      return 'Nenhum saldo USDT disponível';
+    }
+
+    const required = parseFloat(quoteOrderQty);
+    const available = parseFloat(usdt.free.toString());
+
+    if (available < required) {
+      return `Saldo USDT insuficiente. Disponível: ${available}, Necessário: ${required}`;
+    }
+
+    return null;
+  }
 
   /**
    * Coloca uma nova ordem MARKET de compra ou venda
@@ -62,7 +153,31 @@ export class TradeService {
     const apiKey = CryptoUtil.decrypt(credentials.apiKey);
     const apiSecret = CryptoUtil.decrypt(credentials.apiSecret);
 
-    // 4️⃣ Preparar parâmetros para Binance
+    // 4️⃣ Validação de saldo para BUY orders
+    const balanceError = await this.validateBalance(
+      userId,
+      dto.side,
+      dto.symbol,
+      dto.quoteOrderQty,
+    );
+    if (balanceError) {
+      throw new BadRequestException(balanceError);
+    }
+
+    // 5️⃣ Buscar informações de exchange para validação
+    const exchangeInfo = await this.getExchangeInfo(apiKey, apiSecret);
+    if (exchangeInfo) {
+      const filterError = this.validateSymbolFilters(
+        dto.symbol,
+        dto.quantity || dto.quoteOrderQty || '0',
+        exchangeInfo,
+      );
+      if (filterError) {
+        throw new BadRequestException(filterError);
+      }
+    }
+
+    // 6️⃣ Preparar parâmetros para Binance
     const binanceParams = {
       symbol: dto.symbol,
       side: dto.side,
@@ -73,7 +188,7 @@ export class TradeService {
     };
 
     try {
-      // 5️⃣ Chamar Binance API
+      // 7️⃣ Chamar Binance API
       this.logger.log(`Colocando ordem: ${JSON.stringify(binanceParams)}`);
 
       const binanceResponse = await this.binanceClient.signedPost<any>(
@@ -139,7 +254,7 @@ export class TradeService {
         createdAt: result.createdAt,
       };
     } catch (error) {
-      // 7️⃣ Tratar erros
+      // 8️⃣ Tratar erros
       this.logger.error(
         `Falha ao colocar ordem: ${error.message}`,
         error.stack,
@@ -158,23 +273,8 @@ export class TradeService {
         },
       });
 
-      // Mapear erros específicos da Binance
-      const binanceError = error.response?.data;
-      if (binanceError?.code === -2010) {
-        throw new BadRequestException(
-          'Saldo insuficiente para realizar a operação',
-        );
-      }
-      if (binanceError?.code === -1013) {
-        throw new BadRequestException('Quantidade inválida para este par');
-      }
-      if (binanceError?.code === -1003) {
-        throw new BadRequestException(
-          'Limite de requisições atingido. Tente novamente em breve.',
-        );
-      }
-
-      throw new BadRequestException(`Erro Binance: ${error.message}`);
+      // Usar handler centralizado de erros
+      BinanceErrorHandler.handle(error);
     }
   }
 
@@ -221,11 +321,7 @@ export class TradeService {
   /**
    * Consultar status de uma ordem
    */
-  async getOrder(
-    userId: string,
-    orderId: bigint,
-    symbol: string,
-  ): Promise<any> {
+  async getOrder(userId: string, orderId: bigint): Promise<any> {
     const order = await this.prisma.order.findUnique({
       where: {
         userId_orderId: {
