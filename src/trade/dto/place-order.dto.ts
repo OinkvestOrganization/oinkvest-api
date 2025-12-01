@@ -1,6 +1,11 @@
-import { IsString, IsDecimal, IsEnum, Matches } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  Matches,
+  ValidateIf,
+} from 'class-validator';
 import { OrderSide } from '../enums/order-side.enum';
-import { OrderType } from '../enums/order-type.enum';
 
 export class PlaceOrderDto {
   @IsString()
@@ -12,15 +17,17 @@ export class PlaceOrderDto {
   @IsEnum(OrderSide)
   side: OrderSide;
 
-  @IsEnum(OrderType)
-  type: OrderType = OrderType.MARKET;
-
-  @IsDecimal({ decimal_digits: '1,8' }, { message: 'Invalid quantity format' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+(\.\d{1,8})?$/, {
+    message: 'Quantity must be a valid decimal (e.g., 0.001 or 100)',
+  })
   quantity?: string;
 
-  @IsDecimal(
-    { decimal_digits: '1,8' },
-    { message: 'Invalid quoteOrderQty format' },
-  )
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+(\.\d{1,8})?$/, {
+    message: 'QuoteOrderQty must be a valid decimal (e.g., 45.50)',
+  })
   quoteOrderQty?: string;
 }

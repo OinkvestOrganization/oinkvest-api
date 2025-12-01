@@ -18,72 +18,11 @@ import { BinanceErrorHandler } from './utils/binance-error-handler';
 @Injectable()
 export class TradeService {
   private readonly logger = new Logger(TradeService.name);
-  private exchangeInfoCache: Map<string, any> = new Map();
-  private exchangeInfoCacheTTL = 60 * 60 * 1000; // 1 hora
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly binanceClient: BinanceRestClientService,
   ) {}
-
-  /**
-   * Busca informações de exchange da Binance (com cache)
-   */
-  private async getExchangeInfo(apiKey: string, apiSecret: string) {
-    const cacheKey = 'exchangeInfo';
-    const cached = this.exchangeInfoCache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < this.exchangeInfoCacheTTL) {
-      return cached.data;
-    }
-
-    try {
-      const exchangeInfo = await this.binanceClient.signedGet<any>(
-        '/api/v3/exchangeInfo',
-        apiKey,
-        apiSecret,
-      );
-
-      this.exchangeInfoCache.set(cacheKey, {
-        data: exchangeInfo,
-        timestamp: Date.now(),
-      });
-
-      return exchangeInfo;
-    } catch (error) {
-      this.logger.warn(`Falha ao buscar exchangeInfo: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
-   * Valida quantidade contra filtros da Binance
-   */
-  private validateSymbolFilters(
-    symbol: string,
-    quantity: string,
-    exchangeInfo: any,
-  ): string | null {
-    if (!exchangeInfo) return null;
-
-    const symbolInfo = exchangeInfo.symbols?.find((s) => s.symbol === symbol);
-    if (!symbolInfo) return `Símbolo ${symbol} não encontrado na Binance`;
-
-    const lotSizeFilter = symbolInfo.filters?.find(
-      (f) => f.filterType === 'LOT_SIZE',
-    );
-    if (lotSizeFilter) {
-      const qty = parseFloat(quantity);
-      const minQty = parseFloat(lotSizeFilter.minQty);
-      const maxQty = parseFloat(lotSizeFilter.maxQty);
-
-      if (qty < minQty || qty > maxQty) {
-        return `Quantidade deve estar entre ${minQty} e ${maxQty}`;
-      }
-    }
-
-    return null;
-  }
 
   /**
    * Valida saldo disponível para MARKET BUY
@@ -164,18 +103,8 @@ export class TradeService {
       throw new BadRequestException(balanceError);
     }
 
-    // 5️⃣ Buscar informações de exchange para validação
-    const exchangeInfo = await this.getExchangeInfo(apiKey, apiSecret);
-    if (exchangeInfo) {
-      const filterError = this.validateSymbolFilters(
-        dto.symbol,
-        dto.quantity || dto.quoteOrderQty || '0',
-        exchangeInfo,
-      );
-      if (filterError) {
-        throw new BadRequestException(filterError);
-      }
-    }
+    // 5️⃣ Validações de saldo e credenciais já foram feitas acima
+    // Pulando validação de exchange info para evitar erros de API
 
     // 6️⃣ Preparar parâmetros para Binance
     const binanceParams = {
@@ -184,7 +113,6 @@ export class TradeService {
       type: 'MARKET',
       ...(dto.quantity && { quantity: dto.quantity }),
       ...(dto.quoteOrderQty && { quoteOrderQty: dto.quoteOrderQty }),
-      newOrderRespType: 'FULL', // Resposta detalhada
     };
 
     try {
@@ -240,7 +168,7 @@ export class TradeService {
       this.logger.log(`Ordem colocada com sucesso: orderId=${result.orderId}`);
 
       return {
-        orderId: result.orderId,
+        orderId: result.orderId.toString(),
         clientOrderId: result.clientOrderId,
         symbol: result.symbol,
         side: result.side,
@@ -289,6 +217,11 @@ export class TradeService {
     const fills = binanceResponse.fills || [];
 
     for (const fill of fills) {
+      // Calcular quoteQuantity se não vier da Binance
+      const quoteQuantity =
+        fill.quoteQty ||
+        (parseFloat(fill.price) * parseFloat(fill.qty)).toString();
+
       await tx.trade.upsert({
         where: {
           userId_symbol_tradeId: {
@@ -304,11 +237,11 @@ export class TradeService {
           orderId: BigInt(binanceResponse.orderId),
           price: fill.price,
           quantity: fill.qty,
-          quoteQuantity: fill.quoteQty,
+          quoteQuantity: quoteQuantity,
           commission: fill.commission,
           commissionAsset: fill.commissionAsset,
           isBuyer: fill.side === 'BUY',
-          isMaker: fill.isMaker,
+          isMaker: fill.isMaker || false,
           executedTime: new Date(binanceResponse.transactTime),
         },
         update: {

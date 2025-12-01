@@ -1,7 +1,7 @@
 import { Decimal } from '@prisma/client/runtime/binary';
 
 export class PlaceOrderResponseDto {
-  orderId: bigint;
+  orderId: string | bigint;
   clientOrderId: string;
   symbol: string;
   side: string;
