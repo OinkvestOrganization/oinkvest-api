@@ -75,19 +75,11 @@ export class TradeController {
     description: 'Dados da ordem MARKET',
     examples: {
       buyWithQuantity: {
-        summary: 'Comprar com quantidade',
+        summary: 'Comprar',
         value: {
           symbol: 'BTCUSDT',
           side: 'BUY',
           quantity: '0.001',
-        },
-      },
-      buyWithQuoteOrderQty: {
-        summary: 'Comprar com valor em USDT',
-        value: {
-          symbol: 'BTCUSDT',
-          side: 'BUY',
-          quoteOrderQty: '45.50',
         },
       },
       sell: {
@@ -106,7 +98,7 @@ export class TradeController {
     type: PlaceOrderResponseDto,
     schema: {
       example: {
-        orderId: 8389765432123456,
+        orderId: '8389765432123456',
         clientOrderId: 'myOrder1701388838000',
         symbol: 'BTCUSDT',
         side: 'BUY',
@@ -164,7 +156,7 @@ export class TradeController {
     type: PlaceOrderResponseDto,
     schema: {
       example: {
-        orderId: 8389765432123456,
+        orderId: '8389765432123456',
         clientOrderId: 'myOrder1701388838000',
         symbol: 'BTCUSDT',
         side: 'BUY',
@@ -220,7 +212,7 @@ export class TradeController {
         total: 25,
         orders: [
           {
-            orderId: 8389765432123456,
+            orderId: '8389765432123456',
             clientOrderId: 'myOrder1701388838000',
             symbol: 'BTCUSDT',
             side: 'BUY',
@@ -232,7 +224,7 @@ export class TradeController {
             createdAt: '2025-12-01T12:00:00.000Z',
           },
           {
-            orderId: 8389765432123457,
+            orderId: '8389765432123457',
             clientOrderId: 'myOrder1701388900000',
             symbol: 'BTCUSDT',
             side: 'SELL',
