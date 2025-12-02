@@ -12,6 +12,8 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -183,7 +185,16 @@ export class TradeController {
   @Get('orders/:orderId')
   async getOrder(@Req() req, @Param('orderId') orderId: string) {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-    return this.tradeService.getOrder(userId, BigInt(orderId));
+
+    if (!orderId || typeof orderId !== 'string' || orderId.trim() === '') {
+      throw new BadRequestException('orderId inválido');
+    }
+
+    try {
+      return this.tradeService.getOrder(userId, BigInt(orderId));
+    } catch (error) {
+      throw new BadRequestException('orderId deve ser um número válido');
+    }
   }
 
   @ApiOperation({

@@ -174,9 +174,9 @@ export class TradeService {
         side: result.side,
         type: result.type,
         status: result.status,
-        quantity: result.quantity,
-        executedQty: result.executedQty,
-        cumulativeQuoteQty: result.cumulativeQuoteQty,
+        quantity: result.quantity.toString(),
+        executedQty: result.executedQty.toString(),
+        cumulativeQuoteQty: result.cumulativeQuoteQty.toString(),
         fills: binanceResponse.fills,
         transactTime: result.transactTime,
         createdAt: result.createdAt,
@@ -269,15 +269,15 @@ export class TradeService {
     }
 
     return {
-      orderId: order.orderId,
+      orderId: order.orderId.toString(),
       clientOrderId: order.clientOrderId,
       symbol: order.symbol,
       side: order.side,
       type: order.type,
       status: order.status,
-      quantity: order.quantity,
-      executedQty: order.executedQty,
-      cumulativeQuoteQty: order.cumulativeQuoteQty,
+      quantity: order.quantity.toString(),
+      executedQty: order.executedQty.toString(),
+      cumulativeQuoteQty: order.cumulativeQuoteQty.toString(),
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     };
@@ -317,15 +317,15 @@ export class TradeService {
     return {
       total,
       orders: orders.map((order) => ({
-        orderId: order.orderId,
+        orderId: order.orderId.toString(),
         clientOrderId: order.clientOrderId,
         symbol: order.symbol,
         side: order.side,
         type: order.type,
         status: order.status,
-        quantity: order.quantity,
-        executedQty: order.executedQty,
-        cumulativeQuoteQty: order.cumulativeQuoteQty,
+        quantity: order.quantity.toString(),
+        executedQty: order.executedQty.toString(),
+        cumulativeQuoteQty: order.cumulativeQuoteQty.toString(),
         createdAt: order.createdAt,
       })),
     };

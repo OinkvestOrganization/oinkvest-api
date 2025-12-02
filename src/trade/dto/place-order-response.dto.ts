@@ -1,19 +1,17 @@
-import { Decimal } from '@prisma/client/runtime/binary';
-
 export class PlaceOrderResponseDto {
-  orderId: string | bigint;
+  orderId: string;
   clientOrderId: string;
   symbol: string;
   side: string;
   type: string;
   status: string;
-  quantity: Decimal;
-  executedQty: Decimal;
-  cumulativeQuoteQty?: Decimal;
+  quantity: string;
+  executedQty: string;
+  cumulativeQuoteQty?: string;
   fills?: Array<{
-    price: Decimal;
-    qty: Decimal;
-    commission: Decimal;
+    price: string;
+    qty: string;
+    commission: string;
     commissionAsset: string;
   }>;
   transactTime: Date;
