@@ -21,6 +21,25 @@ interface BinanceTrade {
   isBestMatch: boolean;
 }
 
+/**
+ * 📊 TRADE SERVICE - Sincronização de Histórico de Trades
+ *
+ * Este serviço gerencia todo o ciclo de sincronização de trades históricas da Binance.
+ *
+ * MÉTODOS PRINCIPAIS:
+ * 🎯 syncTradesForSymbol() - Sincroniza trades de UM símbolo específico
+ * 🎯 syncTradesForMultipleSymbols() - Sincroniza trades de VÁRIOS símbolos específicos
+ * 🎯 syncAllTradesForWallet() ⭐ RECOMENDADO - Sincroniza trades APENAS dos ativos em carteira
+ * 🎯 syncAllTradesForWalletAllSymbols() - Sincroniza trades de TODOS os símbolos USDT (não recomendado, lento)
+ * 🎯 getWalletAssetSymbols() - Obtém símbolos com saldo > 0 do banco de dados
+ * 🎯 discoverUserSymbols() - Descobre TODOS os símbolos USDT da exchange
+ *
+ * IMPORTANTE:
+ * - getWalletAssetSymbols() consulta o BANCO DE DADOS (dados já sincronizados)
+ * - discoverUserSymbols() consulta a EXCHANGE em TEMPO REAL (todos os pares)
+ * - Use syncAllTradesForWallet() para sincronizar APENAS ativos da carteira (recomendado)
+ * - Use syncAllTradesForWalletAllSymbols() apenas se precisar de todos os símbolos USDT
+ */
 @Injectable()
 export class TradeService {
   private readonly logger = new Logger(TradeService.name);
@@ -330,8 +349,53 @@ export class TradeService {
   }
 
   /**
+   * Obtém os símbolos da carteira com saldo Spot > 0
+   * Consulta apenas os ativos que foram sincronizados pelo endpoint wallet/sync/balances
+   * com saldo diferente de zero
+   */
+  async getWalletAssetSymbols(userId: string): Promise<string[]> {
+    this.logger.log(
+      `Obtendo símbolos com saldo > 0 da carteira do usuário ${userId}`,
+    );
+
+    try {
+      // Buscar todos os ativos com saldo > 0 na WalletBalance
+      const balances = await this.prisma.walletBalance.findMany({
+        where: {
+          userId,
+          total: { gt: new Decimal(0) }, // Apenas ativos com saldo > 0
+        },
+        select: { asset: true },
+        orderBy: { asset: 'asc' },
+      });
+
+      if (balances.length === 0) {
+        this.logger.warn(
+          `Nenhum ativo com saldo encontrado para o usuário ${userId}. Execute /wallet/sync/balances primeiro.`,
+        );
+        return [];
+      }
+
+      // Converter assets em símbolos USDT (ex: BTC -> BTCUSDT, ETH -> ETHUSDT)
+      const symbols = balances.map((b) => `${b.asset}USDT`);
+
+      this.logger.log(
+        `Obtidos ${symbols.length} símbolos com saldo para sincronizar: ${symbols.join(', ')}`,
+      );
+
+      return symbols;
+    } catch (error) {
+      this.logger.error(
+        `Erro ao obter símbolos da carteira para ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Descobre todos os símbolos únicos que o usuário já negociou
    * Busca na Binance usando a API de exchange info
+   * NOTA: Este método sincroniza TODOS os símbolos USDT da Binance, não apenas os da carteira
    */
   async discoverUserSymbols(userId: string): Promise<string[]> {
     const cred = await this.prisma.exchangeCredential.findUnique({
@@ -385,7 +449,8 @@ export class TradeService {
 
   /**
    * Sincroniza TODAS as trades históricas de uma carteira
-   * Descobre automaticamente e sincroniza TODOS os símbolos USDT disponíveis
+   * Sincroniza APENAS os ativos que possuem saldo em carteira (Spot)
+   * Os ativos devem ter sido sincronizados primeiro com /wallet/sync/balances
    */
   async syncAllTradesForWallet(
     userId: string,
@@ -397,21 +462,39 @@ export class TradeService {
 
     const skipSymbols = new Set(options?.skipSymbols || []);
 
-    let allSymbols: string[];
+    // Obter apenas os símbolos da carteira com saldo > 0
+    let symbolsWithBalance: string[];
     try {
-      allSymbols = await this.discoverUserSymbols(userId);
+      symbolsWithBalance = await this.getWalletAssetSymbols(userId);
     } catch (error) {
       this.logger.error(
-        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
+        `Falha ao obter símbolos da carteira para ${userId}: ${error.message}`,
       );
       throw error;
     }
 
-    // Sincronizar TODOS os símbolos encontrados (sem limite)
-    const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
+    if (symbolsWithBalance.length === 0) {
+      this.logger.warn(
+        `Nenhum símbolo com saldo encontrado para sincronização. Execute /wallet/sync/balances primeiro.`,
+      );
+      return {
+        status: 'no_assets',
+        totalSymbols: 0,
+        successfulSyncs: 0,
+        failedSyncs: 0,
+        totalTradesSynced: 0,
+        totalTradesInDatabase: 0,
+        symbols: [],
+        message:
+          'Nenhum ativo com saldo encontrado. Por favor, execute /wallet/sync/balances primeiro para sincronizar sua carteira.',
+      };
+    }
+
+    // Sincronizar apenas os símbolos da carteira (filtrando os skip)
+    const symbolsToSync = symbolsWithBalance.filter((s) => !skipSymbols.has(s));
 
     this.logger.log(
-      `Sincronizando ${symbolsToSync.length} símbolos para ${userId}`,
+      `Sincronizando ${symbolsToSync.length} símbolos da carteira para ${userId}`,
     );
 
     const results = await this.syncTradesForMultipleSymbols(
@@ -437,7 +520,71 @@ export class TradeService {
       totalTradesSynced: totalSynced,
       totalTradesInDatabase: totalInDatabase,
       symbols: results,
-      message: `Sincronização completa finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+      message: `Sincronização de carteira finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+    };
+  }
+
+  /**
+   * Sincroniza TODAS as trades de TODOS os símbolos USDT da exchange
+   * AVISO: Isto sincroniza literalmente TODOS os pares USDT disponíveis, o que pode levar muito tempo
+   * Use syncAllTradesForWallet() para sincronizar apenas os ativos em sua carteira (recomendado)
+   */
+  async syncAllTradesForWalletAllSymbols(
+    userId: string,
+    options?: { skipSymbols?: string[] },
+  ) {
+    this.logger.log(
+      `Iniciando sincronização COMPLETA de TODOS os símbolos USDT para usuário ${userId}`,
+    );
+
+    const skipSymbols = new Set(options?.skipSymbols || []);
+
+    // Descobrir TODOS os símbolos USDT da exchange (AVISO: pode ser muitos!)
+    let allSymbols: string[];
+    try {
+      allSymbols = await this.discoverUserSymbols(userId);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+
+    this.logger.warn(
+      `⚠️ Sincronizando ${allSymbols.length} símbolos USDT. Isto pode levar MUITO TEMPO!`,
+    );
+
+    // Sincronizar TODOS os símbolos encontrados (sem limite)
+    const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
+
+    this.logger.log(
+      `Iniciando sincronização de ${symbolsToSync.length} símbolos para ${userId}`,
+    );
+
+    const results = await this.syncTradesForMultipleSymbols(
+      userId,
+      symbolsToSync,
+    );
+
+    // Compilar estatísticas
+    const successfulSyncs = results.filter((r) => !r.error);
+    const failedSyncs = results.filter((r) => r.error);
+
+    const totalSynced = successfulSyncs.reduce((sum, r) => sum + r.synced, 0);
+    const totalInDatabase = successfulSyncs.reduce(
+      (sum, r) => sum + r.totalInDatabase,
+      0,
+    );
+
+    return {
+      status: 'completed',
+      totalSymbols: symbolsToSync.length,
+      successfulSyncs: successfulSyncs.length,
+      failedSyncs: failedSyncs.length,
+      totalTradesSynced: totalSynced,
+      totalTradesInDatabase: totalInDatabase,
+      symbols: results,
+      message: `Sincronização completa de TODOS os símbolos finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
     };
   }
 
