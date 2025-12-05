@@ -589,6 +589,124 @@ export class TradeService {
   }
 
   /**
+   * 📊 Calcula o preço médio de uma posição processando as trades em ordem cronológica
+   *
+   * LÓGICA:
+   * Mantém dois valores enquanto processa cada trade sequencialmente:
+   * - qty:  quantidade líquida do ativo base (ex: BTC em BTCUSDT)
+   * - cost: quanto de USDT ainda está "preso" na posição
+   * - averagePrice = cost / qty (preço médio)
+   *
+   * TRATAMENTO POR TIPO DE TRADE:
+   *
+   * 1) COMPRA COM TAXA NO ATIVO BASE (ex: taxa em BTC)
+   *    - Você compra Q unidades de BTC
+   *    - Paga V em USDT
+   *    - Perde feeBase BTC para taxa
+   *    - Resultado: qty += Q - feeBase, cost += V
+   *    - Efeito: preço médio sobe (menos BTC, mesmo USDT gasto)
+   *
+   * 2) VENDA COM TAXA NO ATIVO COTADO (ex: taxa em USDT)
+   *    - Você vende Q unidades de BTC
+   *    - Recebe V em USDT
+   *    - Paga feeQuote em USDT
+   *    - Resultado: qty -= Q, cost -= (V - feeQuote)
+   *    - Efeito: preço médio da posição restante cai (realizou ganho/perda)
+   *
+   * 3) POSIÇÃO ZERADA
+   *    - Se qty ficar < 1e-12 (praticamente 0), zera tudo
+   *    - Significa que vendeu tudo, lucro/prejuízo realizado
+   *
+   * EXEMPLO PRÁTICO (BTCUSDT):
+   * - Passo 1: Compra 1 BTC a 100k, taxa 0.001 BTC
+   *   qty=0.999, cost=100000, avgPrice=100100.10
+   * - Passo 2: Vende 0.4 BTC a 120k, taxa 10 USDT
+   *   qty=0.599, cost=52010, avgPrice=86861
+   *   (break-even: vender a 86861 fecha zerado)
+   */
+  async calculateAveragePrice(
+    userId: string,
+    symbol: string,
+  ): Promise<{
+    quantity: Decimal;
+    cost: Decimal;
+    averagePrice: Decimal;
+  }> {
+    // Buscar todas as trades para este símbolo ordenadas por data
+    const trades = await this.prisma.trade.findMany({
+      where: { userId, symbol },
+      orderBy: { executedTime: 'asc' },
+      select: {
+        quantity: true,
+        quoteQuantity: true,
+        commission: true,
+        commissionAsset: true,
+        isBuyer: true,
+        executedTime: true,
+      },
+    });
+
+    if (trades.length === 0) {
+      return {
+        quantity: new Decimal(0),
+        cost: new Decimal(0),
+        averagePrice: new Decimal(0),
+      };
+    }
+
+    // Extrair base e quote do símbolo (ex: BTCUSDT -> BTC, USDT)
+    const base = symbol.replace('USDT', '');
+    const quote = 'USDT';
+
+    let qty = new Decimal(0); // quantidade em ativo base (ex: BTC)
+    let cost = new Decimal(0); // quanto de USDT está "preso" na posição
+
+    // Processar cada trade na ordem cronológica
+    for (const trade of trades) {
+      const q = new Decimal(trade.quantity.toString());
+      const v = new Decimal(trade.quoteQuantity.toString());
+      const commission = new Decimal(trade.commission.toString());
+
+      // Determinar se taxa foi no ativo base ou no ativo cotado
+      const feeBase =
+        trade.commissionAsset === base ? commission : new Decimal(0);
+      const feeQuote =
+        trade.commissionAsset === quote ? commission : new Decimal(0);
+
+      if (trade.isBuyer) {
+        // Compra: entra quantidade, sai taxa do ativo base
+        // qty aumenta, mas diminui pela taxa
+        // cost aumenta pelo valor gasto
+        qty = qty.plus(q).minus(feeBase);
+        cost = cost.plus(v);
+      } else {
+        // Venda: diminui quantidade
+        // cost diminui pelo valor recebido (liquido da taxa)
+        qty = qty.minus(q);
+        cost = cost.minus(v.minus(feeQuote));
+      }
+
+      // Se quantidade fica muito pequena (floating point), zera
+      if (Math.abs(qty.toNumber()) < 1e-12) {
+        qty = new Decimal(0);
+        cost = new Decimal(0);
+      }
+    }
+
+    // Calcular preço médio
+    const averagePrice =
+      qty.gt(0) && qty.abs().gt(new Decimal('1e-12'))
+        ? cost.dividedBy(qty)
+        : new Decimal(0);
+
+    return {
+      quantity: qty,
+      cost,
+      averagePrice,
+    };
+  }
+
+  /**
    * Retorna comissão agrupada por ativo
    * Essencial para entender em qual ativo a comissão foi cobrada
    */
@@ -688,6 +806,9 @@ export class TradeService {
         // Saldo livre = balance - buyCommission (apenas comissão de compra reduz o saldo)
         const free = balance.minus(buyCommission);
 
+        // Calcular preço médio processando trades em ordem
+        const avgPriceData = await this.calculateAveragePrice(userId, symbol);
+
         return {
           symbol,
           tradeCount: stat._count.id,
@@ -702,6 +823,10 @@ export class TradeService {
           buyCommission: buyCommission.toString(),
           sellCommission: sellCommission.toString(),
           totalCommission: stat._sum.commission?.toString() || '0',
+          // Novos campos: preço médio da posição
+          currentQuantity: avgPriceData.quantity.toString(),
+          investedCost: avgPriceData.cost.toString(),
+          averagePrice: avgPriceData.averagePrice.toString(),
         };
       }),
     );

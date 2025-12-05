@@ -490,7 +490,44 @@ export class WalletController {
     - Contagem de compras vs vendas
     - Comissão total paga
     - Data da primeira e última trade
-    - Breakdown por símbolo
+    - Breakdown detalhado por símbolo incluindo:
+    
+    📊 PARA CADA SÍMBOLO:
+    - tradeCount: número total de trades
+    - buyCount / sellCount: número de compras e vendas
+    - totalBuyQuantity / totalSellQuantity: quantidade total comprada/vendida
+    - balance: quantidade atual (compras - vendas)
+    - free: quantidade livre (considerando comissão)
+    - totalBuyValue / totalSellValue: valor total em USDT
+    - buyCommission / sellCommission: comissão paga por tipo
+    
+    💰 PREÇO MÉDIO (NOVO):
+    - currentQuantity: quantidade líquida ATUAL da posição
+    - investedCost: quanto de USDT está "preso" na posição
+    - averagePrice: preço médio da posição (cost / quantity)
+    
+    ⚙️ COMO CALCULA O PREÇO MÉDIO:
+    O sistema processa TODAS as trades em ordem cronológica, mantendo:
+    
+    1) COMPRA com taxa no ativo base (ex: taxa em BTC):
+       - Você fica com menos BTC (taxa)
+       - Mas investiu USDT cheio
+       - Preço médio SOBE
+    
+    2) VENDA com taxa no ativo cotado (ex: taxa em USDT):
+       - Você tirou dinheiro da mesa
+       - Preço médio da posição restante CAI
+       - (break-even = vender no averagePrice fecha zerado)
+    
+    3) POSIÇÃO ZERADA:
+       - Se vendeu tudo, currentQuantity = 0
+       - averagePrice = 0 (não há posição aberta)
+    
+    📈 INTERPRETAÇÃO:
+    - Se você tem 0.5 BTC com averagePrice de 45.000:
+      → Investiu 22.500 USDT nessa posição
+      → Break-even = vender a 45.000
+      → Se vender a 50.000 = lucro de 2.500 USDT
     
     Esta é uma excelente forma de ver um overview rápido do seu histórico de trades.
     `,
