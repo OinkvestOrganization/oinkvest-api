@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   Post,
@@ -21,7 +22,16 @@ import {
 import { CreateExchangeCredentialDto } from './dto/create-exchange-credential.dto';
 import { ListBalancesQueryDto } from './dto/list-balances.query.dto';
 import { SyncBalancesResponse } from './dto/sync-balances.response';
+import {
+  ListTradesQueryDto,
+  ListTradesResponse,
+  SyncTradesResponse,
+  TradeStatsDto,
+  AllTradesSyncResponse,
+  WalletTradesSummaryDto,
+} from './dto/trade.dto';
 import { WalletService } from './wallet.service';
+import { TradeService } from './trade.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 @ApiTags('Wallet')
@@ -36,7 +46,10 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
   }),
 )
 export class WalletController {
-  constructor(private readonly walletService: WalletService) {}
+  constructor(
+    private readonly walletService: WalletService,
+    private readonly tradeService: TradeService,
+  ) {}
   private readonly logger = new Logger(WalletController.name);
 
   @ApiOperation({
@@ -133,5 +146,264 @@ export class WalletController {
   async listBalances(@Req() req, @Query() query: ListBalancesQueryDto) {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
     return this.walletService.listBalances(userId, query);
+  }
+
+  // ==================== TRADES ENDPOINTS ====================
+
+  @ApiOperation({
+    summary: 'Sincronizar histórico completo de trades de um símbolo',
+    description: `
+    Sincroniza TODOS os trades históricos de um símbolo desde o início da conta.
+    
+    Este endpoint faz múltiplas requisições à API da Binance usando paginação com 'fromId'
+    para trazer todo o histórico de trades, sem limites de tempo (diferente da interface web que mostra apenas 6 meses).
+    
+    Os dados são armazenados no banco de dados para análise posterior.
+    
+    **Notas importantes:**
+    - A sincronização pode levar alguns segundos dependendo do volume de trades
+    - Trades duplicadas não serão armazenadas duas vezes (usa upsert)
+    - Recomenda-se sincronizar um símbolo por vez para melhor controle
+    `,
+  })
+  @ApiCreatedResponse({
+    type: SyncTradesResponse,
+    description: 'Histórico de trades sincronizado com sucesso',
+    schema: {
+      example: {
+        synced: 150,
+        totalInDatabase: 1500,
+        symbol: 'BTCUSDT',
+        hasMore: false,
+        lastSyncedTradeTime: '2025-11-17T23:30:00.000Z',
+      },
+    },
+  })
+  @Post('sync/trades')
+  async syncTrades(
+    @Req() req,
+    @Query('symbol') symbol: string,
+  ): Promise<SyncTradesResponse> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    if (!symbol) {
+      throw new Error('Parâmetro "symbol" é obrigatório');
+    }
+
+    this.logger.log(`Iniciando sincronização de trades para ${symbol}`);
+    return this.tradeService.syncTradesForSymbol(userId, symbol);
+  }
+
+  @ApiOperation({
+    summary: 'Sincronizar trades de múltiplos símbolos',
+    description: `
+    Sincroniza o histórico de trades para vários símbolos simultaneamente.
+    
+    **Exemplo de uso:**
+    \`\`\`
+    POST /wallet/sync/trades/batch
+    {
+      "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+    }
+    \`\`\`
+    `,
+  })
+  @ApiBody({
+    schema: {
+      example: {
+        symbols: ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'],
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Sincronização de múltiplos símbolos',
+    schema: {
+      example: [
+        {
+          synced: 150,
+          totalInDatabase: 1500,
+          symbol: 'BTCUSDT',
+          hasMore: false,
+        },
+        {
+          synced: 250,
+          totalInDatabase: 2500,
+          symbol: 'ETHUSDT',
+          hasMore: false,
+        },
+      ],
+    },
+  })
+  @Post('sync/trades/batch')
+  async syncTradesBatch(
+    @Req() req,
+    @Body('symbols') symbols: string[],
+  ): Promise<any[]> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+      throw new Error(
+        'Array "symbols" é obrigatório e deve conter pelo menos um símbolo',
+      );
+    }
+
+    this.logger.log(
+      `Iniciando sincronização de trades para ${symbols.length} símbolos`,
+    );
+    return this.tradeService.syncTradesForMultipleSymbols(userId, symbols);
+  }
+
+  @ApiOperation({
+    summary: 'Listar trades com filtros e paginação',
+    description: `
+    Lista os trades armazenados no banco de dados com suporte a:
+    - Filtros por data
+    - Filtros por tipo (compra/venda)
+    - Paginação completa
+    - Ordenação por data
+    
+    **Exemplos:**
+    
+    Últimos 50 trades:
+    \`/wallet/trades?symbol=BTCUSDT&page=1&limit=50\`
+    
+    Trades de uma data específica:
+    \`/wallet/trades?symbol=BTCUSDT&startDate=2025-01-01&endDate=2025-01-31\`
+    
+    Apenas compras:
+    \`/wallet/trades?symbol=BTCUSDT&type=BUY&limit=100\`
+    `,
+  })
+  @ApiOkResponse({ type: ListTradesResponse })
+  @Get('trades')
+  async listTrades(
+    @Req() req,
+    @Query() query: ListTradesQueryDto,
+  ): Promise<ListTradesResponse> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    if (!query.symbol) {
+      throw new Error('Parâmetro "symbol" é obrigatório');
+    }
+
+    return this.tradeService.listTrades(userId, query);
+  }
+
+  @ApiOperation({
+    summary: 'Obter estatísticas de trades de um símbolo',
+    description: `
+    Retorna estatísticas agregadas de um símbolo:
+    - Total de trades
+    - Total de compras vs vendas
+    - Comissão total paga
+    - Data do primeiro e último trade
+    `,
+  })
+  @ApiOkResponse({ type: TradeStatsDto })
+  @Get('trades/stats')
+  async getTradeStats(
+    @Req() req,
+    @Query('symbol') symbol: string,
+  ): Promise<TradeStatsDto> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    if (!symbol) {
+      throw new Error('Parâmetro "symbol" é obrigatório');
+    }
+
+    return this.tradeService.getTradeStats(userId, symbol);
+  }
+
+  // ==================== NOVAS FUNCIONALIDADES ====================
+
+  @ApiOperation({
+    summary: 'Sincronizar TODAS as trades históricas da carteira',
+    description: `
+    Sincroniza o histórico COMPLETO de TODAS as trades da sua carteira Binance.
+    
+    Este endpoint:
+    1. Descobre automaticamente TODOS os símbolos USDT disponíveis para Spot Trading na exchange
+    2. Sincroniza o histórico completo de cada símbolo usando paginação fromId
+    3. Armazena tudo no banco de dados para análise profunda
+    
+    **Características:**
+    - ✅ Sincroniza SEM limite de símbolos (TODOS os pares USDT)
+    - ✅ SEM limite de tempo (API Binance não limita, diferente da web interface 6 meses)
+    - ✅ Sem precisar informar símbolos - descobre automaticamente
+    - ✅ Trades duplicadas não são armazenadas duas vezes (usa upsert)
+    - ✅ Processamento robusto com retry de tempo
+    
+    **Importante:**
+    - Esta operação pode levar VÁRIOS MINUTOS se você tem muitas trades
+    - O sistema sincroniza em background, você pode consultar o progresso
+    - Recomenda-se não interromper até a conclusão
+    
+    **Resposta inclui:**
+    - Total de trades sincronizadas nesta execução
+    - Total geral de trades no banco para todos os símbolos
+    - Total de símbolos processados
+    - Resumo detalhado de sucessos e falhas por símbolo
+    `,
+  })
+  @ApiCreatedResponse({
+    type: AllTradesSyncResponse,
+    description: 'Sincronização completa de TODAS as trades',
+  })
+  @Post('sync/trades/all')
+  async syncAllTrades(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.log(
+      `Iniciando sincronização COMPLETA de TODAS as trades para ${userId}`,
+    );
+    return this.tradeService.syncAllTradesForWallet(userId);
+  }
+
+  @ApiOperation({
+    summary: 'Obter resumo completo do histórico de trades da carteira',
+    description: `
+    Retorna um resumo consolidado de TODAS as trades históricas da sua carteira.
+    
+    **Informações retornadas:**
+    - Total de trades em toda a carteira
+    - Total de símbolos diferentes negociados
+    - Contagem de compras vs vendas
+    - Comissão total paga
+    - Data da primeira e última trade
+    - Breakdown por símbolo
+    
+    Esta é uma excelente forma de ver um overview rápido do seu histórico de trades.
+    `,
+  })
+  @ApiOkResponse({
+    type: WalletTradesSummaryDto,
+    description: 'Resumo completo do histórico de trades',
+  })
+  @Get('trades/summary')
+  async getTradesSummary(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.log(`Gerando resumo de trades para ${userId}`);
+    return this.tradeService.getWalletTradesSummary(userId);
+  }
+
+  @ApiOperation({
+    summary: 'Deletar todos os trades de um usuário',
+    description:
+      'Remove todos os trades armazenados no banco. Esta ação é irreversível.',
+  })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        deleted: 1500,
+      },
+    },
+  })
+  @Delete('trades')
+  async deleteAllTrades(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.warn(`Usuário ${userId} está deletando todos os trades`);
+    return this.tradeService.deleteAllTrades(userId);
   }
 }

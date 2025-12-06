@@ -1,12 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { UserService } from '../user/user.service';
+import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Test, TestingModule } from '@nestjs/testing';
+import * as bcrypt from 'bcrypt';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { UserService } from '../user/user.service';
+import { AuthService } from './auth.service';
 
 // Mocks
 const mockUserService = {
@@ -50,18 +49,20 @@ describe('AuthService', () => {
   let service: AuthService;
   let prisma: typeof mockPrismaService;
 
-  const mockUser = {
+  const mockUserWithoutPassword = {
     id: 'user-id-1',
     email: 'test@example.com',
     nome: 'Test User',
-    senha: 'hashedPassword',
     status: true,
     emailVerificado: new Date().toISOString(),
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  const mockUserWithoutPassword = (({ senha, ...rest }) => rest)(mockUser);
+  const mockUser = {
+    ...mockUserWithoutPassword,
+    senha: 'hashedPassword',
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -84,11 +85,6 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    const createUserDto = {
-      email: 'new@example.com',
-      nome: 'New User',
-      senha: 'password123',
-    };
     /*
     it('deve registrar um novo usuário e enviar email de verificação', async () => {
       mockUserService.createUser.mockResolvedValue(mockUserWithoutPassword);

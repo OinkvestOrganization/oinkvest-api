@@ -1,3 +1,6 @@
+import { EmailService } from '@/email/email.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UserService } from '@/user/user.service';
 import {
   BadRequestException,
@@ -8,11 +11,10 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from '@/user/dto/create-user.dto';
-import { EmailService } from '@/email/email.service';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ResetPasswordDto } from './dto/reset-password.dot';
