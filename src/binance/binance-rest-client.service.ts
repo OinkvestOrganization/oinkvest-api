@@ -203,4 +203,18 @@ export class BinanceRestClientService {
       throw new Error(`Binance error: ${msg}`);
     }
   }
+
+  // ===== HTTP UNSIGNED =====
+  async unsignedGet<T>(
+    path: string,
+    params: Record<string, any> = {},
+  ): Promise<T> {
+    const query = new URLSearchParams(params).toString();
+    const url = `${this.baseUrl}${path}?${query}`;
+    this.logger.log(`GET ${url}`);
+    const { data } = await firstValueFrom(
+      this.http.get<T>(url, { timeout: 10000 }),
+    );
+    return data;
+  }
 }

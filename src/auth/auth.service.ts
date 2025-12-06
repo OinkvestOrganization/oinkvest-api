@@ -3,21 +3,33 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UserService } from '@/user/user.service';
 import {
+  BadRequestException,
+  ConflictException,
+  Inject,
   Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { ResetPasswordDto } from './dto/reset-password.dot';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { $Enums } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  logger = new Logger(AuthService.name);
   constructor(
     private usersService: UserService,
     private jwtService: JwtService,
     private emailService: EmailService,
     private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
@@ -64,6 +76,10 @@ export class AuthService {
     //   );
     // }
 
+    if (user.status === $Enums.Status.INACTIVE) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
     const payload = { sub: user.id, email: user.email };
 
     return {
@@ -86,5 +102,74 @@ export class AuthService {
     }
     await this.usersService.activateUser(record.userId);
     return { message: 'Email verificado com sucesso.' };
+  }
+
+  async forgotPassword(email: string) {
+    const cachedEmail = await this.cacheManager.get('forgot-email-' + email);
+    if (cachedEmail) {
+      throw new BadRequestException(
+        'Você solicitou recentemente uma redefinição de senha. Por favor, aguarde um minuto antes de tentar novamente.',
+      );
+    }
+    const minute = 60000;
+
+    this.cacheManager.set('forgot-email-' + email, email, minute);
+
+    const user = await this.usersService.findByEmail(email);
+
+    // Envio de mensagem de sucesso mesmo após falha para evitar enumeração de email
+    if (!user || !user.emailVerificado) {
+      return {
+        message:
+          'Se um usuário com este e-mail existir e for verificado, um link para redefinição de senha será enviado.',
+      };
+    }
+
+    const token = randomUUID();
+    const expiresIn = new Date(Date.now() + 1000 * 60 * 10); // 10 minutes
+
+    await this.emailService.sendPasswordResetEmail(user.email, token);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: token,
+        passwordResetExpires: expiresIn,
+      },
+    });
+
+    return {
+      message:
+        'Se um usuário com este e-mail existir e for verificado, um link para redefinição de senha será enviado.',
+    };
+  }
+
+  async resetPassword(resetPassword: ResetPasswordDto) {
+    const { token, newPassword } = resetPassword;
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: {
+          gte: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      this.logger.error('Token inválido');
+      throw new UnauthorizedException('Token inválido');
+    }
+
+    const salt = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    try {
+      await this.usersService.changePassword(user.id, hashedPassword);
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(error);
+    }
+    return { message: 'Senha redefinida com sucesso.' };
   }
 }

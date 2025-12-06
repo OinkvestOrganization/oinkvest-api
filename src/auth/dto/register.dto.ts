@@ -34,15 +34,17 @@ export class RegisterDto {
   })
   @IsNotEmpty({ message: 'A senha é obrigatória.' })
   @IsString({ message: 'A senha deve ser uma string.' })
-  @IsStrongPassword({
-    minLength: 8,
-    minLowercase: 1,
-    minUppercase: 1,
-    minNumbers: 1,
-  },
-  {
-    message:
-      'A senha deve ter pelo menos 8 caracteres, incluindo letra maiúscula, letra minúscula, caractere especial e número.',
-  },)
+  @IsStrongPassword(
+    {
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+    },
+    {
+      message:
+        'A senha deve ter pelo menos 8 caracteres, incluindo letra maiúscula, letra minúscula, caractere especial e número.',
+    },
+  )
   senha: string;
 }

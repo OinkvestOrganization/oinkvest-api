@@ -102,8 +102,8 @@ export class KlineServerService {
     const subscribers = this.streamSubscribers.get(stream);
     if (subscribers) {
       subscribers.forEach((clientId) => {
-        // const klineDto = KlineDto.fromBinance(data);
-        this.server.to(clientId).emit('klines', data);
+        const klineDto = KlineDto.fromBinance(data);
+        this.server.to(clientId).emit('klines', klineDto);
       });
     }
   }
