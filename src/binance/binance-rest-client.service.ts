@@ -250,25 +250,25 @@ export class BinanceRestClientService {
       };
     }
 
-    const minNotionalFilter = filters.find(
-      (f: any) => f.filterType === 'MIN_NOTIONAL',
+    // Busca pelo filter NOTIONAL (o filterType correto é 'NOTIONAL', não 'MIN_NOTIONAL')
+    // O property é 'minNotional' dentro do filter
+    const notionalFilter = filters.find(
+      (f: any) => f.filterType === 'NOTIONAL',
     );
-    if (minNotionalFilter) {
+    if (notionalFilter) {
       result.MIN_NOTIONAL = {
-        minNotional: minNotionalFilter.minNotional,
+        minNotional: notionalFilter.minNotional,
+        maxNotional: notionalFilter.maxNotional,
       };
       this.logger.log(
-        `[getSymbolFiltersForFrontend] Encontrado MIN_NOTIONAL para ${symbol}: ${minNotionalFilter.minNotional}`,
+        `[getSymbolFiltersForFrontend] Encontrado NOTIONAL para ${symbol}: minNotional=${notionalFilter.minNotional}, maxNotional=${notionalFilter.maxNotional}`,
       );
     } else {
       this.logger.warn(
-        `[getSymbolFiltersForFrontend] MIN_NOTIONAL não encontrado para ${symbol}. Filtros disponíveis: ${filters.map((f: any) => f.filterType).join(', ')}`,
+        `[getSymbolFiltersForFrontend] NOTIONAL não encontrado para ${symbol}. Filtros disponíveis: ${filters.map((f: any) => f.filterType).join(', ')}`,
       );
     }
 
-    this.logger.log(
-      `[getSymbolFiltersForFrontend] ${symbol} => ${JSON.stringify(result)}`,
-    );
     return result;
   }
 
@@ -329,17 +329,17 @@ export class BinanceRestClientService {
       }
     }
 
-    // Validar MIN_NOTIONAL
-    const minNotionalFilter = filters.find(
-      (f: any) => f.filterType === 'MIN_NOTIONAL',
+    // Validar NOTIONAL (filter que define minNotional)
+    const notionalFilter = filters.find(
+      (f: any) => f.filterType === 'NOTIONAL',
     );
-    if (minNotionalFilter) {
-      const minNotional = parseFloat(minNotionalFilter.minNotional);
-      this.logger.debug(`[MIN_NOTIONAL] minNotional=${minNotional}`);
+    if (notionalFilter) {
+      const minNotional = parseFloat(notionalFilter.minNotional);
+      this.logger.debug(`[NOTIONAL] minNotional=${minNotional}`);
 
       if (notional < minNotional) {
         throw new Error(
-          `Valor total da ordem ${notional.toFixed(2)} é menor que o mínimo ${minNotional} USDT para ${symbol}`,
+          `Valor total da ordem ${notional.toFixed(2)} USDT é menor que o mínimo ${minNotional} USDT para ${symbol}`,
         );
       }
     }
