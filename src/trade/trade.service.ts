@@ -104,7 +104,44 @@ export class TradeService {
     }
 
     // 5️⃣ Validações de saldo e credenciais já foram feitas acima
-    // Pulando validação de exchange info para evitar erros de API
+    // Validar filtros de LOT_SIZE e MIN_NOTIONAL
+    try {
+      if (dto.quantity) {
+        // Para calcular preço médio de compra/venda, precisamos do preço atual
+        // Vamos usar a chamada sem assinatura ao /api/v3/ticker/price
+        const tickerResponse = await this.binanceClient.unsignedGet<{
+          symbol: string;
+          price: string;
+        }>('/api/v3/ticker/price', { symbol: dto.symbol });
+
+        await this.binanceClient.validateOrderQuantity(
+          dto.symbol,
+          dto.quantity,
+          tickerResponse.price,
+        );
+      } else if (dto.quoteOrderQty) {
+        // Para quoteOrderQty, o Binance automaticamente calcula a quantidade
+        // Mas ainda podemos validar o mínimo notional
+        const tickerResponse = await this.binanceClient.unsignedGet<{
+          symbol: string;
+          price: string;
+        }>('/api/v3/ticker/price', { symbol: dto.symbol });
+
+        const estimatedQty = (
+          parseFloat(dto.quoteOrderQty) / parseFloat(tickerResponse.price)
+        ).toString();
+
+        await this.binanceClient.validateOrderQuantity(
+          dto.symbol,
+          estimatedQty,
+          tickerResponse.price,
+        );
+      }
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.message || 'Erro ao validar filtros de quantidade',
+      );
+    }
 
     // 6️⃣ Preparar parâmetros para Binance
     const binanceParams = {

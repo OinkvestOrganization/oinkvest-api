@@ -217,4 +217,81 @@ export class BinanceRestClientService {
     );
     return data;
   }
+
+  // ===== EXCHANGE INFO =====
+  async getExchangeInfo(): Promise<any> {
+    return this.unsignedGet('/api/v3/exchangeInfo');
+  }
+
+  async getSymbolFilters(symbol: string): Promise<any> {
+    const exchangeInfo = await this.getExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find(
+      (s: any) => s.symbol === symbol.toUpperCase(),
+    );
+    if (!symbolInfo) {
+      throw new Error(`Symbol ${symbol} not found on Binance`);
+    }
+    return symbolInfo.filters;
+  }
+
+  /**
+   * Valida quantidade contra os filtros LOT_SIZE e MIN_NOTIONAL da Binance
+   * @param symbol - Par de negociação (ex: BTCUSDT)
+   * @param quantity - Quantidade em moeda base (ex: 0.001)
+   * @param price - Preço unitário para cálculo do valor em USDT
+   * @throws Error se a quantidade não atender aos filtros
+   */
+  async validateOrderQuantity(
+    symbol: string,
+    quantity: string,
+    price: string,
+  ): Promise<void> {
+    const filters = await this.getSymbolFilters(symbol);
+    const qty = parseFloat(quantity);
+    const priceNum = parseFloat(price);
+    const notional = qty * priceNum;
+
+    // Validar LOT_SIZE
+    const lotSizeFilter = filters.find((f: any) => f.filterType === 'LOT_SIZE');
+    if (lotSizeFilter) {
+      const minQty = parseFloat(lotSizeFilter.minQty);
+      const maxQty = parseFloat(lotSizeFilter.maxQty);
+      const stepSize = parseFloat(lotSizeFilter.stepSize);
+
+      if (qty < minQty) {
+        throw new Error(
+          `Quantidade ${quantity} é menor que o mínimo ${minQty} para ${symbol}`,
+        );
+      }
+      if (qty > maxQty) {
+        throw new Error(
+          `Quantidade ${quantity} é maior que o máximo ${maxQty} para ${symbol}`,
+        );
+      }
+
+      // Validar step size (casas decimais)
+      const remainder = qty % stepSize;
+      if (remainder > 1e-8) {
+        const decimalPlaces = lotSizeFilter.stepSize.includes('e')
+          ? parseInt(lotSizeFilter.stepSize.split('e')[1])
+          : lotSizeFilter.stepSize.split('.')[1]?.length || 0;
+        throw new Error(
+          `Quantidade ${quantity} não segue o step size ${stepSize} (máximo ${decimalPlaces} casas decimais) para ${symbol}`,
+        );
+      }
+    }
+
+    // Validar MIN_NOTIONAL
+    const minNotionalFilter = filters.find(
+      (f: any) => f.filterType === 'MIN_NOTIONAL',
+    );
+    if (minNotionalFilter) {
+      const minNotional = parseFloat(minNotionalFilter.minNotional);
+      if (notional < minNotional) {
+        throw new Error(
+          `Valor total da ordem ${notional} é menor que o mínimo ${minNotional} USDT para ${symbol}`,
+        );
+      }
+    }
+  }
 }
