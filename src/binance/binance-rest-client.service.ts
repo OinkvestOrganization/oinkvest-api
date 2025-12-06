@@ -270,13 +270,25 @@ export class BinanceRestClientService {
       }
 
       // Validar step size (casas decimais)
+      // Usar arredondamento para evitar erros de ponto flutuante
       const remainder = qty % stepSize;
-      if (remainder > 1e-8) {
-        const decimalPlaces = lotSizeFilter.stepSize.includes('e')
-          ? parseInt(lotSizeFilter.stepSize.split('e')[1])
-          : lotSizeFilter.stepSize.split('.')[1]?.length || 0;
+      const epsilon = 1e-10; // Tolerância para erros de ponto flutuante
+
+      if (remainder > epsilon && stepSize - remainder > epsilon) {
+        // Calcular corretamente o número de casas decimais do stepSize
+        const stepSizeStr = lotSizeFilter.stepSize.toString();
+        let decimalPlaces = 0;
+
+        if (stepSizeStr.includes('e')) {
+          // Formato científico: ex 1e-8
+          decimalPlaces = Math.abs(parseInt(stepSizeStr.split('e')[1]));
+        } else if (stepSizeStr.includes('.')) {
+          // Formato decimal: ex 0.00001
+          decimalPlaces = stepSizeStr.split('.')[1]?.length || 0;
+        }
+
         throw new Error(
-          `Quantidade ${quantity} não segue o step size ${stepSize} (máximo ${decimalPlaces} casas decimais) para ${symbol}`,
+          `Quantidade ${quantity} não segue o step size ${stepSize} para ${symbol}. Máximo de ${decimalPlaces} casas decimais.`,
         );
       }
     }
