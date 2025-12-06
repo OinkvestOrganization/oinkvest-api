@@ -235,6 +235,34 @@ export class BinanceRestClientService {
   }
 
   /**
+   * Retorna os filtros formatados para o frontend (LOT_SIZE e MIN_NOTIONAL)
+   */
+  async getSymbolFiltersForFrontend(symbol: string): Promise<any> {
+    const filters = await this.getSymbolFilters(symbol);
+    const result: any = {};
+
+    const lotSizeFilter = filters.find((f: any) => f.filterType === 'LOT_SIZE');
+    if (lotSizeFilter) {
+      result.LOT_SIZE = {
+        minQty: lotSizeFilter.minQty,
+        maxQty: lotSizeFilter.maxQty,
+        stepSize: lotSizeFilter.stepSize,
+      };
+    }
+
+    const minNotionalFilter = filters.find(
+      (f: any) => f.filterType === 'MIN_NOTIONAL',
+    );
+    if (minNotionalFilter) {
+      result.MIN_NOTIONAL = {
+        minNotional: minNotionalFilter.minNotional,
+      };
+    }
+
+    return result;
+  }
+
+  /**
    * Valida quantidade contra os filtros LOT_SIZE e MIN_NOTIONAL da Binance
    * @param symbol - Par de negociação (ex: BTCUSDT)
    * @param quantity - Quantidade em moeda base (ex: 0.001)
