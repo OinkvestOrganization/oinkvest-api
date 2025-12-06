@@ -15,7 +15,7 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { AuthRequest } from './dto/AuthRequest';
-import { ResetPasswordDto } from './dto/reset-password.dot';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {

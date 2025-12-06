@@ -2,6 +2,7 @@ import { EmailService } from '@/email/email.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UserService } from '@/user/user.service';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   ConflictException,
@@ -9,17 +10,13 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
   UnauthorizedException,
-  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { $Enums } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
-import { PrismaService } from '@/prisma/prisma.service';
-import { ResetPasswordDto } from './dto/reset-password.dot';
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { $Enums } from '@prisma/client';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -34,22 +31,22 @@ export class AuthService {
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.usersService.createUser(createUserDto);
-    // const token = randomUUID();
-    // const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    const token = randomUUID();
+    const expiresIn = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
-    // const verificationToken = await this.prisma.verificationToken.create({
-    //   data: {
-    //     token: token,
-    //     expires: expiresIn,
-    //     userId: user.id,
-    //   },
-    // });
+    const verificationToken = await this.prisma.verificationToken.create({
+      data: {
+        token: token,
+        expires: expiresIn,
+        userId: user.id,
+      },
+    });
 
-    // await this.emailService.sendVerificationEmail(
-    //   user.email,
-    //   verificationToken.token,
-    //   user.nome,
-    // );
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken.token,
+      user.nome,
+    );
     return {
       message:
         'Cadastro realizado com sucesso. Verifique seu e-mail para ativar sua conta.',
@@ -70,11 +67,11 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    // if (!user.emailVerificado) {
-    //   throw new ConflictException(
-    //     'Conta ainda não verificada. Por favor, verifique seu e-mail.',
-    //   );
-    // }
+    if (!user.emailVerificado) {
+      throw new ConflictException(
+        'Conta ainda não verificada. Por favor, verifique seu e-mail.',
+      );
+    }
 
     if (user.status === $Enums.Status.INACTIVE) {
       throw new UnauthorizedException('Credenciais inválidas.');
