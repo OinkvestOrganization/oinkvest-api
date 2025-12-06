@@ -101,20 +101,20 @@ export class KlineDto {
 
   static fromBinance(data: any): KlineDto {
     const dto = new KlineDto();
-    dto.startTime = data.t;
-    dto.openPrice = data.o;
-    dto.highPrice = data.h;
-    dto.lowPrice = data.l;
-    dto.closePrice = data.c;
-    dto.volume = data.v;
-    dto.closePriceTime = data.T;
-    dto.quoteAssetVolume = data.q;
-    dto.numberOfTrades = data.n;
-    dto.takerBuyBaseAssetVolume = data.V;
-    dto.takerBuyQuoteAssetVolume = data.Q;
-    dto.symbol = data.s;
-    dto.interval = data.i;
-    dto.closed = data.x;
+    dto.startTime = data.k.t;
+    dto.openPrice = data.k.o;
+    dto.highPrice = data.k.h;
+    dto.lowPrice = data.k.l;
+    dto.closePrice = data.k.c;
+    dto.volume = data.k.v;
+    dto.closePriceTime = data.k.T;
+    dto.quoteAssetVolume = data.k.q;
+    dto.numberOfTrades = data.k.n;
+    dto.takerBuyBaseAssetVolume = data.k.V;
+    dto.takerBuyQuoteAssetVolume = data.k.Q;
+    dto.symbol = data.k.s;
+    dto.interval = data.k.i;
+    dto.closed = data.k.x;
     return dto;
   }
 

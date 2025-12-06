@@ -11,10 +11,11 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { AuthRequest } from './dto/AuthRequest';
+import { ResetPasswordDto } from './dto/reset-password.dot';
 
 @Controller('auth')
 export class AuthController {
@@ -68,5 +69,44 @@ export class AuthController {
     return {
       user: req.user,
     };
+  }
+
+  @ApiOperation({
+    summary: 'Redefinição de senha',
+    description: 'Rota para redefinição de senha de usuários.',
+    tags: ['Auth'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Email de redefinição de senha enviado com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Usuário não encontrado.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Query('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  @ApiOperation({
+    summary: 'Resetar senha com token',
+    description: 'Rota para redefinição de senha de usuários.',
+    tags: ['Auth'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Senha redefinida com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido.',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() resetPassword: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPassword);
   }
 }
