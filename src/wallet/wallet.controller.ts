@@ -45,6 +45,43 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
     transformOptions: { enableImplicitConversion: true },
   }),
 )
+/**
+ * 🎯 FLUXO RECOMENDADO DE USO DO MÓDULO WALLET:
+ *
+ * 1️⃣ PRIMEIRAMENTE - Salvar credenciais:
+ *    POST /wallet/credentials
+ *    - Salva suas credenciais da Binance (API Key + Secret) de forma criptografada
+ *
+ * 2️⃣ SINCRONIZAR CARTEIRA - Trazer saldos atualizados:
+ *    POST /wallet/sync/balances
+ *    - Sincroniza TODOS os seus ativos e saldos (Spot) da Binance
+ *    - Armazena no banco de dados
+ *
+ * 3️⃣ SINCRONIZAR HISTÓRICO DE TRADES (Recomendado):
+ *    POST /wallet/sync/trades/wallet ⭐ RECOMENDADO
+ *    - Sincroniza TODAS as trades históricas APENAS dos ativos em sua carteira
+ *    - Mais eficiente que sincronizar todos os símbolos
+ *
+ *    Alternativa (menos recomendada):
+ *    POST /wallet/sync/trades/all
+ *    - Sincroniza TODAS as trades de TODOS os símbolos USDT (pode levar muito tempo)
+ *
+ *    Ou específico:
+ *    POST /wallet/sync/trades?symbol=BTCUSDT
+ *    - Sincroniza trades de um símbolo específico
+ *
+ * 4️⃣ CONSULTAR DADOS:
+ *    GET /wallet/balances - Listar saldos persistidos
+ *    GET /wallet/trades - Listar trades
+ *    GET /wallet/trades/stats - Estatísticas de um símbolo
+ *    GET /wallet/trades/summary - Resumo completo da carteira
+ *
+ * ⚠️ IMPORTANTE:
+ * - Sempre execute os passos na ordem acima
+ * - Não confunda os endpoints: /sync/trades/wallet (recomendado) com /sync/trades/all (não recomendado)
+ * - O endpoint /sync/trades/wallet sincroniza APENAS ativos da carteira (mais rápido)
+ * - O endpoint /sync/trades/all sincroniza TODOS os símbolos USDT (muito lento)
+ */
 export class WalletController {
   constructor(
     private readonly walletService: WalletService,
@@ -153,7 +190,12 @@ export class WalletController {
   @ApiOperation({
     summary: 'Sincronizar histórico completo de trades de um símbolo',
     description: `
-    Sincroniza TODOS os trades históricos de um símbolo desde o início da conta.
+    Sincroniza TODOS os trades históricos de um SÍMBOLO ESPECÍFICO desde o início da conta.
+    
+    Este endpoint é útil quando:
+    - Você quer sincronizar apenas um ativo específico
+    - Você quer resincronizar um ativo depois de já ter sincronizado
+    - Você quer testar a sincronização com um símbolo específico
     
     Este endpoint faz múltiplas requisições à API da Binance usando paginação com 'fromId'
     para trazer todo o histórico de trades, sem limites de tempo (diferente da interface web que mostra apenas 6 meses).
@@ -164,6 +206,9 @@ export class WalletController {
     - A sincronização pode levar alguns segundos dependendo do volume de trades
     - Trades duplicadas não serão armazenadas duas vezes (usa upsert)
     - Recomenda-se sincronizar um símbolo por vez para melhor controle
+    
+    **Exemplo de uso:**
+    POST /wallet/sync/trades?symbol=BTCUSDT
     `,
   })
   @ApiCreatedResponse({
@@ -195,9 +240,14 @@ export class WalletController {
   }
 
   @ApiOperation({
-    summary: 'Sincronizar trades de múltiplos símbolos',
+    summary: 'Sincronizar trades de múltiplos símbolos específicos',
     description: `
-    Sincroniza o histórico de trades para vários símbolos simultaneamente.
+    Sincroniza o histórico de trades para vários símbolos ESPECÍFICOS que você informar.
+    
+    Útil quando:
+    - Você quer sincronizar um conjunto específico de ativos
+    - Você não quer sincronizar TODOS os ativos da exchange ou da carteira
+    - Você está testando a sincronização
     
     **Exemplo de uso:**
     \`\`\`
@@ -206,6 +256,11 @@ export class WalletController {
       "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
     }
     \`\`\`
+    
+    **Notas:**
+    - Passe os símbolos exatamente como aparecem na Binance (ex: BTCUSDT, não BTC)
+    - Esta operação sincroniza os símbolos sequencialmente
+    - Trades duplicadas não são armazenadas duas vezes (usa upsert)
     `,
   })
   @ApiBody({
@@ -317,24 +372,31 @@ export class WalletController {
   // ==================== NOVAS FUNCIONALIDADES ====================
 
   @ApiOperation({
-    summary: 'Sincronizar TODAS as trades históricas da carteira',
+    summary:
+      'Sincronizar trades históricas dos ATIVOS DA CARTEIRA (RECOMENDADO)',
     description: `
-    Sincroniza o histórico COMPLETO de TODAS as trades da sua carteira Binance.
+    🎯 ESTE É O ENDPOINT RECOMENDADO para sincronizar seu histórico de trades!
+    
+    Sincroniza o histórico COMPLETO de trades APENAS dos ativos que estão em sua carteira com saldo > 0.
     
     Este endpoint:
-    1. Descobre automaticamente TODOS os símbolos USDT disponíveis para Spot Trading na exchange
-    2. Sincroniza o histórico completo de cada símbolo usando paginação fromId
+    1. Consulta seu banco de dados para obter os ativos com saldo (WalletBalance)
+    2. Para cada ativo, sincroniza o histórico completo de trades usando paginação fromId
     3. Armazena tudo no banco de dados para análise profunda
     
+    **PRÉ-REQUISITO:**
+    - Você deve executar \`POST /wallet/sync/balances\` PRIMEIRO para registrar seus ativos em carteira
+    
     **Características:**
-    - ✅ Sincroniza SEM limite de símbolos (TODOS os pares USDT)
+    - ✅ Sincroniza APENAS os ativos que você tem em carteira
     - ✅ SEM limite de tempo (API Binance não limita, diferente da web interface 6 meses)
-    - ✅ Sem precisar informar símbolos - descobre automaticamente
+    - ✅ Sem precisar informar símbolos - descobre automaticamente da sua carteira
     - ✅ Trades duplicadas não são armazenadas duas vezes (usa upsert)
     - ✅ Processamento robusto com retry de tempo
+    - ✅ Mais eficiente que sincronizar TODOS os símbolos da exchange
     
     **Importante:**
-    - Esta operação pode levar VÁRIOS MINUTOS se você tem muitas trades
+    - Esta operação pode levar ALGUNS MINUTOS se você tem muitas trades
     - O sistema sincroniza em background, você pode consultar o progresso
     - Recomenda-se não interromper até a conclusão
     
@@ -343,6 +405,64 @@ export class WalletController {
     - Total geral de trades no banco para todos os símbolos
     - Total de símbolos processados
     - Resumo detalhado de sucessos e falhas por símbolo
+    
+    **Fluxo recomendado:**
+    1. POST /wallet/credentials (salvar credenciais)
+    2. POST /wallet/sync/balances (sincronizar seus ativos)
+    3. POST /wallet/sync/trades/wallet (sincronizar trades dos ativos) ← ESTE ENDPOINT
+    `,
+  })
+  @ApiCreatedResponse({
+    type: AllTradesSyncResponse,
+    description: 'Sincronização de trades dos ativos em carteira',
+  })
+  @Post('sync/trades/wallet')
+  async syncWalletTrades(@Req() req): Promise<any> {
+    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
+
+    this.logger.log(
+      `Iniciando sincronização de trades dos ATIVOS DA CARTEIRA para ${userId}`,
+    );
+    return this.tradeService.syncAllTradesForWallet(userId);
+  }
+
+  @ApiOperation({
+    summary:
+      'Sincronizar TODAS as trades de TODOS os símbolos USDT (NÃO RECOMENDADO)',
+    description: `
+    ⚠️ CUIDADO: Este endpoint sincroniza TODOS os símbolos USDT da exchange Binance (milhares de pares).
+    Na maioria dos casos, você quer usar POST /wallet/sync/trades/wallet ao invés disso!
+    
+    Sincroniza o histórico COMPLETO de TODAS as trades de TODOS os pares USDT disponíveis na Binance.
+    
+    Este endpoint:
+    1. Descobre TODOS os símbolos USDT disponíveis para Spot Trading na exchange
+    2. Para cada símbolo, sincroniza o histórico completo usando paginação fromId
+    3. Armazena tudo no banco de dados
+    
+    **Quando usar:**
+    - Você quer um histórico COMPLETO de TODAS as suas transações
+    - Você quer dados de análise de ativos que você não tem mais em carteira
+    
+    **Quando NÃO usar (caso mais comum):**
+    - Se você quer sincronizar apenas os ativos que estão em sua carteira: use POST /wallet/sync/trades/wallet
+    
+    **Características:**
+    - ✅ Sincroniza TODOS os símbolos USDT disponíveis
+    - ⚠️ Pode levar VÁRIOS MINUTOS (muitos símbolos)
+    - ⚠️ Alto volume de requisições à API da Binance
+    - ✅ Trades duplicadas não são armazenadas duas vezes (usa upsert)
+    
+    **Importante:**
+    - Esta operação pode levar MUITOS MINUTOS
+    - O sistema sincroniza em background
+    - Recomenda-se não interromper até a conclusão
+    
+    **Resposta inclui:**
+    - Total de trades sincronizadas nesta execução
+    - Total geral de trades no banco para TODOS os símbolos
+    - Total de símbolos processados
+    - Resumo detalhado de sucessos e falhas
     `,
   })
   @ApiCreatedResponse({
@@ -356,7 +476,7 @@ export class WalletController {
     this.logger.log(
       `Iniciando sincronização COMPLETA de TODAS as trades para ${userId}`,
     );
-    return this.tradeService.syncAllTradesForWallet(userId);
+    return this.tradeService.syncAllTradesForWalletAllSymbols(userId);
   }
 
   @ApiOperation({
@@ -370,7 +490,44 @@ export class WalletController {
     - Contagem de compras vs vendas
     - Comissão total paga
     - Data da primeira e última trade
-    - Breakdown por símbolo
+    - Breakdown detalhado por símbolo incluindo:
+    
+    📊 PARA CADA SÍMBOLO:
+    - tradeCount: número total de trades
+    - buyCount / sellCount: número de compras e vendas
+    - totalBuyQuantity / totalSellQuantity: quantidade total comprada/vendida
+    - balance: quantidade atual (compras - vendas)
+    - free: quantidade livre (considerando comissão)
+    - totalBuyValue / totalSellValue: valor total em USDT
+    - buyCommission / sellCommission: comissão paga por tipo
+    
+    💰 PREÇO MÉDIO (NOVO):
+    - currentQuantity: quantidade líquida ATUAL da posição
+    - investedCost: quanto de USDT está "preso" na posição
+    - averagePrice: preço médio da posição (cost / quantity)
+    
+    ⚙️ COMO CALCULA O PREÇO MÉDIO:
+    O sistema processa TODAS as trades em ordem cronológica, mantendo:
+    
+    1) COMPRA com taxa no ativo base (ex: taxa em BTC):
+       - Você fica com menos BTC (taxa)
+       - Mas investiu USDT cheio
+       - Preço médio SOBE
+    
+    2) VENDA com taxa no ativo cotado (ex: taxa em USDT):
+       - Você tirou dinheiro da mesa
+       - Preço médio da posição restante CAI
+       - (break-even = vender no averagePrice fecha zerado)
+    
+    3) POSIÇÃO ZERADA:
+       - Se vendeu tudo, currentQuantity = 0
+       - averagePrice = 0 (não há posição aberta)
+    
+    📈 INTERPRETAÇÃO:
+    - Se você tem 0.5 BTC com averagePrice de 45.000:
+      → Investiu 22.500 USDT nessa posição
+      → Break-even = vender a 45.000
+      → Se vender a 50.000 = lucro de 2.500 USDT
     
     Esta é uma excelente forma de ver um overview rápido do seu histórico de trades.
     `,

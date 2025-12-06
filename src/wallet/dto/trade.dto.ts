@@ -411,6 +411,9 @@ export class WalletTradesSummaryDto {
         buyCommission: '1.00000000',
         sellCommission: '1.50000000',
         totalCommission: '2.50000000',
+        currentQuantity: '20.00000000',
+        investedCost: '2002010.00000000',
+        averagePrice: '100100.50000000',
       },
       {
         symbol: 'ETHUSDT',
@@ -426,6 +429,9 @@ export class WalletTradesSummaryDto {
         buyCommission: '2.00000000',
         sellCommission: '1.50000000',
         totalCommission: '3.50000000',
+        currentQuantity: '200.00000000',
+        investedCost: '1010000.00000000',
+        averagePrice: '5050.00000000',
       },
     ],
   })
@@ -443,5 +449,8 @@ export class WalletTradesSummaryDto {
     buyCommission: string;
     sellCommission: string;
     totalCommission: string;
+    currentQuantity: string;
+    investedCost: string;
+    averagePrice: string;
   }>;
 }

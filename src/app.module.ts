@@ -10,6 +10,7 @@ import { KlineServerModule } from './kline-server/kline-server.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { WalletModule } from './wallet/wallet.module';
+import { TradeModule } from './trade/trade.module';
 import { SymbolsModule } from './symbols/symbols.module';
 import { ProfileModule } from './profile/profile.module';
 
@@ -34,6 +35,7 @@ import { ProfileModule } from './profile/profile.module';
     KlineAdminModule,
     BinanceStreamClientModule,
     WalletModule,
+    TradeModule,
     SymbolsModule,
     ProfileModule,
   ],

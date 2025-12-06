@@ -21,6 +21,25 @@ interface BinanceTrade {
   isBestMatch: boolean;
 }
 
+/**
+ * 📊 TRADE SERVICE - Sincronização de Histórico de Trades
+ *
+ * Este serviço gerencia todo o ciclo de sincronização de trades históricas da Binance.
+ *
+ * MÉTODOS PRINCIPAIS:
+ * 🎯 syncTradesForSymbol() - Sincroniza trades de UM símbolo específico
+ * 🎯 syncTradesForMultipleSymbols() - Sincroniza trades de VÁRIOS símbolos específicos
+ * 🎯 syncAllTradesForWallet() ⭐ RECOMENDADO - Sincroniza trades APENAS dos ativos em carteira
+ * 🎯 syncAllTradesForWalletAllSymbols() - Sincroniza trades de TODOS os símbolos USDT (não recomendado, lento)
+ * 🎯 getWalletAssetSymbols() - Obtém símbolos com saldo > 0 do banco de dados
+ * 🎯 discoverUserSymbols() - Descobre TODOS os símbolos USDT da exchange
+ *
+ * IMPORTANTE:
+ * - getWalletAssetSymbols() consulta o BANCO DE DADOS (dados já sincronizados)
+ * - discoverUserSymbols() consulta a EXCHANGE em TEMPO REAL (todos os pares)
+ * - Use syncAllTradesForWallet() para sincronizar APENAS ativos da carteira (recomendado)
+ * - Use syncAllTradesForWalletAllSymbols() apenas se precisar de todos os símbolos USDT
+ */
 @Injectable()
 export class TradeService {
   private readonly logger = new Logger(TradeService.name);
@@ -330,8 +349,53 @@ export class TradeService {
   }
 
   /**
+   * Obtém os símbolos da carteira com saldo Spot > 0
+   * Consulta apenas os ativos que foram sincronizados pelo endpoint wallet/sync/balances
+   * com saldo diferente de zero
+   */
+  async getWalletAssetSymbols(userId: string): Promise<string[]> {
+    this.logger.log(
+      `Obtendo símbolos com saldo > 0 da carteira do usuário ${userId}`,
+    );
+
+    try {
+      // Buscar todos os ativos com saldo > 0 na WalletBalance
+      const balances = await this.prisma.walletBalance.findMany({
+        where: {
+          userId,
+          total: { gt: new Decimal(0) }, // Apenas ativos com saldo > 0
+        },
+        select: { asset: true },
+        orderBy: { asset: 'asc' },
+      });
+
+      if (balances.length === 0) {
+        this.logger.warn(
+          `Nenhum ativo com saldo encontrado para o usuário ${userId}. Execute /wallet/sync/balances primeiro.`,
+        );
+        return [];
+      }
+
+      // Converter assets em símbolos USDT (ex: BTC -> BTCUSDT, ETH -> ETHUSDT)
+      const symbols = balances.map((b) => `${b.asset}USDT`);
+
+      this.logger.log(
+        `Obtidos ${symbols.length} símbolos com saldo para sincronizar: ${symbols.join(', ')}`,
+      );
+
+      return symbols;
+    } catch (error) {
+      this.logger.error(
+        `Erro ao obter símbolos da carteira para ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Descobre todos os símbolos únicos que o usuário já negociou
    * Busca na Binance usando a API de exchange info
+   * NOTA: Este método sincroniza TODOS os símbolos USDT da Binance, não apenas os da carteira
    */
   async discoverUserSymbols(userId: string): Promise<string[]> {
     const cred = await this.prisma.exchangeCredential.findUnique({
@@ -385,7 +449,8 @@ export class TradeService {
 
   /**
    * Sincroniza TODAS as trades históricas de uma carteira
-   * Descobre automaticamente e sincroniza TODOS os símbolos USDT disponíveis
+   * Sincroniza APENAS os ativos que possuem saldo em carteira (Spot)
+   * Os ativos devem ter sido sincronizados primeiro com /wallet/sync/balances
    */
   async syncAllTradesForWallet(
     userId: string,
@@ -397,21 +462,39 @@ export class TradeService {
 
     const skipSymbols = new Set(options?.skipSymbols || []);
 
-    let allSymbols: string[];
+    // Obter apenas os símbolos da carteira com saldo > 0
+    let symbolsWithBalance: string[];
     try {
-      allSymbols = await this.discoverUserSymbols(userId);
+      symbolsWithBalance = await this.getWalletAssetSymbols(userId);
     } catch (error) {
       this.logger.error(
-        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
+        `Falha ao obter símbolos da carteira para ${userId}: ${error.message}`,
       );
       throw error;
     }
 
-    // Sincronizar TODOS os símbolos encontrados (sem limite)
-    const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
+    if (symbolsWithBalance.length === 0) {
+      this.logger.warn(
+        `Nenhum símbolo com saldo encontrado para sincronização. Execute /wallet/sync/balances primeiro.`,
+      );
+      return {
+        status: 'no_assets',
+        totalSymbols: 0,
+        successfulSyncs: 0,
+        failedSyncs: 0,
+        totalTradesSynced: 0,
+        totalTradesInDatabase: 0,
+        symbols: [],
+        message:
+          'Nenhum ativo com saldo encontrado. Por favor, execute /wallet/sync/balances primeiro para sincronizar sua carteira.',
+      };
+    }
+
+    // Sincronizar apenas os símbolos da carteira (filtrando os skip)
+    const symbolsToSync = symbolsWithBalance.filter((s) => !skipSymbols.has(s));
 
     this.logger.log(
-      `Sincronizando ${symbolsToSync.length} símbolos para ${userId}`,
+      `Sincronizando ${symbolsToSync.length} símbolos da carteira para ${userId}`,
     );
 
     const results = await this.syncTradesForMultipleSymbols(
@@ -437,7 +520,206 @@ export class TradeService {
       totalTradesSynced: totalSynced,
       totalTradesInDatabase: totalInDatabase,
       symbols: results,
-      message: `Sincronização completa finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+      message: `Sincronização de carteira finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+    };
+  }
+
+  /**
+   * Sincroniza TODAS as trades de TODOS os símbolos USDT da exchange
+   * AVISO: Isto sincroniza literalmente TODOS os pares USDT disponíveis, o que pode levar muito tempo
+   * Use syncAllTradesForWallet() para sincronizar apenas os ativos em sua carteira (recomendado)
+   */
+  async syncAllTradesForWalletAllSymbols(
+    userId: string,
+    options?: { skipSymbols?: string[] },
+  ) {
+    this.logger.log(
+      `Iniciando sincronização COMPLETA de TODOS os símbolos USDT para usuário ${userId}`,
+    );
+
+    const skipSymbols = new Set(options?.skipSymbols || []);
+
+    // Descobrir TODOS os símbolos USDT da exchange (AVISO: pode ser muitos!)
+    let allSymbols: string[];
+    try {
+      allSymbols = await this.discoverUserSymbols(userId);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+
+    this.logger.warn(
+      `⚠️ Sincronizando ${allSymbols.length} símbolos USDT. Isto pode levar MUITO TEMPO!`,
+    );
+
+    // Sincronizar TODOS os símbolos encontrados (sem limite)
+    const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
+
+    this.logger.log(
+      `Iniciando sincronização de ${symbolsToSync.length} símbolos para ${userId}`,
+    );
+
+    const results = await this.syncTradesForMultipleSymbols(
+      userId,
+      symbolsToSync,
+    );
+
+    // Compilar estatísticas
+    const successfulSyncs = results.filter((r) => !r.error);
+    const failedSyncs = results.filter((r) => r.error);
+
+    const totalSynced = successfulSyncs.reduce((sum, r) => sum + r.synced, 0);
+    const totalInDatabase = successfulSyncs.reduce(
+      (sum, r) => sum + r.totalInDatabase,
+      0,
+    );
+
+    return {
+      status: 'completed',
+      totalSymbols: symbolsToSync.length,
+      successfulSyncs: successfulSyncs.length,
+      failedSyncs: failedSyncs.length,
+      totalTradesSynced: totalSynced,
+      totalTradesInDatabase: totalInDatabase,
+      symbols: results,
+      message: `Sincronização completa de TODOS os símbolos finalizada. ${successfulSyncs.length}/${symbolsToSync.length} símbolos sincronizados com sucesso.`,
+    };
+  }
+
+  /**
+   * 📊 Calcula o preço médio de uma posição processando as trades em ordem cronológica
+   *
+   * LÓGICA:
+   * Mantém dois valores enquanto processa cada trade sequencialmente:
+   * - qty:  quantidade líquida do ativo base (ex: BTC em BTCUSDT)
+   * - cost: quanto de USDT ainda está "preso" na posição
+   * - averagePrice = cost / qty (preço médio)
+   *
+   * TRATAMENTO POR TIPO DE TRADE:
+   *
+   * 1) COMPRA COM TAXA NO ATIVO BASE (ex: taxa em BTC)
+   *    - Você compra Q unidades de BTC
+   *    - Paga V em USDT
+   *    - Perde feeBase BTC para taxa
+   *    - Resultado: qty += Q - feeBase, cost += V
+   *    - Efeito: preço médio sobe (menos BTC, mesmo USDT gasto)
+   *
+   * 2) VENDA COM TAXA NO ATIVO COTADO (ex: taxa em USDT)
+   *    - Você vende Q unidades de BTC
+   *    - Recebe V em USDT
+   *    - Paga feeQuote em USDT
+   *    - Resultado: qty -= Q, cost -= (V - feeQuote)
+   *    - Efeito: preço médio da posição restante cai (realizou ganho/perda)
+   *
+   * 3) POSIÇÃO ZERADA
+   *    - Se qty ficar < 1e-12 (praticamente 0), zera tudo
+   *    - Significa que vendeu tudo, lucro/prejuízo realizado
+   *
+   * EXEMPLO PRÁTICO (BTCUSDT):
+   * - Passo 1: Compra 1 BTC a 100k, taxa 0.001 BTC
+   *   qty=0.999, cost=100000, avgPrice=100100.10
+   * - Passo 2: Vende 0.4 BTC a 120k, taxa 10 USDT
+   *   qty=0.599, cost=52010, avgPrice=86861
+   *   (break-even: vender a 86861 fecha zerado)
+   */
+  async calculateAveragePrice(
+    userId: string,
+    symbol: string,
+  ): Promise<{
+    quantity: Decimal;
+    cost: Decimal;
+    averagePrice: Decimal;
+  }> {
+    const trades = await this.prisma.trade.findMany({
+      where: { userId, symbol },
+      orderBy: { executedTime: 'asc' },
+      select: {
+        quantity: true,
+        quoteQuantity: true,
+        commission: true,
+        commissionAsset: true,
+        isBuyer: true,
+        executedTime: true,
+      },
+    });
+
+    if (trades.length === 0) {
+      return {
+        quantity: new Decimal(0),
+        cost: new Decimal(0),
+        averagePrice: new Decimal(0),
+      };
+    }
+
+    // Ex.: BTCUSDT -> base = BTC, quote = USDT
+    const base = symbol.replace('USDT', '');
+    const quote = 'USDT';
+
+    const ZERO = new Decimal(0);
+    const EPS = new Decimal('0.00001'); // tolerância para "poeira" de qty
+
+    let qty = ZERO; // quantidade atual em ativo base (BTC)
+    let cost = ZERO; // custo contábil da posição (sempre ≈ qty * avgPrice)
+    let realizedPnl = ZERO; // opcional, só para controle interno
+
+    for (const trade of trades) {
+      const q = new Decimal(trade.quantity.toString()); // base
+      const v = new Decimal(trade.quoteQuantity.toString()); // quote
+      const commission = new Decimal(trade.commission.toString());
+
+      const feeBase = trade.commissionAsset === base ? commission : ZERO;
+      const feeQuote = trade.commissionAsset === quote ? commission : ZERO;
+
+      if (trade.isBuyer) {
+        // COMPRA – taxa no ativo base (BTC) na maioria dos casos
+        const netQty = q.minus(feeBase); // entra menos BTC por causa da taxa
+        const tradeCost = v.plus(feeQuote); // se algum dia vier taxa em USDT também
+
+        qty = qty.plus(netQty);
+        cost = cost.plus(tradeCost);
+      } else {
+        // VENDA – taxa no ativo cotado (USDT)
+        const netQty = q; // quantidade de BTC vendida
+        const proceeds = v.minus(feeQuote); // USDT líquido que entrou
+
+        if (qty.gt(ZERO)) {
+          const avgBefore = cost.div(qty); // preço médio antes da venda
+          const costOfSold = avgBefore.mul(netQty); // custo contábil dos BTC vendidos
+
+          // lucro/prejuízo realizado nessa venda (opcional)
+          realizedPnl = realizedPnl.plus(proceeds.minus(costOfSold));
+
+          // tira do COST apenas o custo da quantidade vendida
+          cost = cost.minus(costOfSold);
+        }
+
+        // diminui posição em BTC
+        qty = qty.minus(netQty);
+      }
+
+      // Se sobrou só poeira, considera que zerou a posição
+      if (qty.abs().lt(EPS)) {
+        qty = ZERO;
+        cost = ZERO;
+      }
+
+      Logger.debug(
+        `Trade em ${symbol} - ${trade.executedTime.toISOString()}: isBuyer=${trade.isBuyer}, qty=${qty.toString()}, cost=${cost.toString()}`,
+      );
+    }
+
+    Logger.debug(
+      `Posição final em ${symbol}: qty=${qty.toString()}, cost=${cost.toString()}`,
+    );
+
+    const averagePrice = qty.abs().gte(EPS) ? cost.div(qty) : ZERO;
+
+    return {
+      quantity: qty,
+      cost,
+      averagePrice,
     };
   }
 
@@ -541,6 +823,9 @@ export class TradeService {
         // Saldo livre = balance - buyCommission (apenas comissão de compra reduz o saldo)
         const free = balance.minus(buyCommission);
 
+        // Calcular preço médio processando trades em ordem
+        const avgPriceData = await this.calculateAveragePrice(userId, symbol);
+
         return {
           symbol,
           tradeCount: stat._count.id,
@@ -555,6 +840,10 @@ export class TradeService {
           buyCommission: buyCommission.toString(),
           sellCommission: sellCommission.toString(),
           totalCommission: stat._sum.commission?.toString() || '0',
+          // Novos campos: preço médio da posição
+          currentQuantity: avgPriceData.quantity.toString(),
+          investedCost: avgPriceData.cost.toString(),
+          averagePrice: avgPriceData.averagePrice.toString(),
         };
       }),
     );
