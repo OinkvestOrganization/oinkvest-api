@@ -184,7 +184,7 @@ export class WalletService {
     },
   ) {
     const { asset, minTotal, take = 100, skip = 0 } = params ?? {};
-    return this.prisma.walletBalance.findMany({
+    const balances = await this.prisma.walletBalance.findMany({
       where: {
         userId,
         asset: asset ? asset.toUpperCase() : undefined,
@@ -204,5 +204,14 @@ export class WalletService {
         lastSyncAt: true,
       },
     });
+
+    // Convert Decimal to string for JSON serialization
+    return balances.map((balance) => ({
+      asset: balance.asset,
+      free: balance.free.toString(),
+      locked: balance.locked.toString(),
+      total: balance.total.toString(),
+      lastSyncAt: balance.lastSyncAt,
+    }));
   }
 }
