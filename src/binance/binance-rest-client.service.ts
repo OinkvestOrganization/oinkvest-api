@@ -251,12 +251,11 @@ export class BinanceRestClientService {
     const priceNum = parseFloat(price);
     const notional = qty * priceNum;
 
-    // Validar LOT_SIZE
+    // Validar LOT_SIZE (apenas mínimo e máximo)
     const lotSizeFilter = filters.find((f: any) => f.filterType === 'LOT_SIZE');
     if (lotSizeFilter) {
       const minQty = parseFloat(lotSizeFilter.minQty);
       const maxQty = parseFloat(lotSizeFilter.maxQty);
-      const stepSize = parseFloat(lotSizeFilter.stepSize);
 
       if (qty < minQty) {
         throw new Error(
@@ -266,29 +265,6 @@ export class BinanceRestClientService {
       if (qty > maxQty) {
         throw new Error(
           `Quantidade ${quantity} é maior que o máximo ${maxQty} para ${symbol}`,
-        );
-      }
-
-      // Validar step size (casas decimais)
-      // Usar arredondamento para evitar erros de ponto flutuante
-      const remainder = qty % stepSize;
-      const epsilon = 1e-10; // Tolerância para erros de ponto flutuante
-
-      if (remainder > epsilon && stepSize - remainder > epsilon) {
-        // Calcular corretamente o número de casas decimais do stepSize
-        const stepSizeStr = lotSizeFilter.stepSize.toString();
-        let decimalPlaces = 0;
-
-        if (stepSizeStr.includes('e')) {
-          // Formato científico: ex 1e-8
-          decimalPlaces = Math.abs(parseInt(stepSizeStr.split('e')[1]));
-        } else if (stepSizeStr.includes('.')) {
-          // Formato decimal: ex 0.00001
-          decimalPlaces = stepSizeStr.split('.')[1]?.length || 0;
-        }
-
-        throw new Error(
-          `Quantidade ${quantity} não segue o step size ${stepSize} para ${symbol}. Máximo de ${decimalPlaces} casas decimais.`,
         );
       }
     }
