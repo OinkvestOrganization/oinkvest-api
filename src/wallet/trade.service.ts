@@ -632,7 +632,6 @@ export class TradeService {
     cost: Decimal;
     averagePrice: Decimal;
   }> {
-    // Buscar todas as trades para este símbolo ordenadas por data
     const trades = await this.prisma.trade.findMany({
       where: { userId, symbol },
       orderBy: { executedTime: 'asc' },
@@ -654,50 +653,68 @@ export class TradeService {
       };
     }
 
-    // Extrair base e quote do símbolo (ex: BTCUSDT -> BTC, USDT)
+    // Ex.: BTCUSDT -> base = BTC, quote = USDT
     const base = symbol.replace('USDT', '');
     const quote = 'USDT';
 
-    let qty = new Decimal(0); // quantidade em ativo base (ex: BTC)
-    let cost = new Decimal(0); // quanto de USDT está "preso" na posição
+    const ZERO = new Decimal(0);
+    const EPS = new Decimal('0.00001'); // tolerância para "poeira" de qty
 
-    // Processar cada trade na ordem cronológica
+    let qty = ZERO; // quantidade atual em ativo base (BTC)
+    let cost = ZERO; // custo contábil da posição (sempre ≈ qty * avgPrice)
+    let realizedPnl = ZERO; // opcional, só para controle interno
+
     for (const trade of trades) {
-      const q = new Decimal(trade.quantity.toString());
-      const v = new Decimal(trade.quoteQuantity.toString());
+      const q = new Decimal(trade.quantity.toString()); // base
+      const v = new Decimal(trade.quoteQuantity.toString()); // quote
       const commission = new Decimal(trade.commission.toString());
 
-      // Determinar se taxa foi no ativo base ou no ativo cotado
-      const feeBase =
-        trade.commissionAsset === base ? commission : new Decimal(0);
-      const feeQuote =
-        trade.commissionAsset === quote ? commission : new Decimal(0);
+      const feeBase = trade.commissionAsset === base ? commission : ZERO;
+      const feeQuote = trade.commissionAsset === quote ? commission : ZERO;
 
       if (trade.isBuyer) {
-        // Compra: entra quantidade, sai taxa do ativo base
-        // qty aumenta, mas diminui pela taxa
-        // cost aumenta pelo valor gasto
-        qty = qty.plus(q).minus(feeBase);
-        cost = cost.plus(v);
+        // COMPRA – taxa no ativo base (BTC) na maioria dos casos
+        const netQty = q.minus(feeBase); // entra menos BTC por causa da taxa
+        const tradeCost = v.plus(feeQuote); // se algum dia vier taxa em USDT também
+
+        qty = qty.plus(netQty);
+        cost = cost.plus(tradeCost);
       } else {
-        // Venda: diminui quantidade
-        // cost diminui pelo valor recebido (liquido da taxa)
-        qty = qty.minus(q);
-        cost = cost.minus(v.minus(feeQuote));
+        // VENDA – taxa no ativo cotado (USDT)
+        const netQty = q; // quantidade de BTC vendida
+        const proceeds = v.minus(feeQuote); // USDT líquido que entrou
+
+        if (qty.gt(ZERO)) {
+          const avgBefore = cost.div(qty); // preço médio antes da venda
+          const costOfSold = avgBefore.mul(netQty); // custo contábil dos BTC vendidos
+
+          // lucro/prejuízo realizado nessa venda (opcional)
+          realizedPnl = realizedPnl.plus(proceeds.minus(costOfSold));
+
+          // tira do COST apenas o custo da quantidade vendida
+          cost = cost.minus(costOfSold);
+        }
+
+        // diminui posição em BTC
+        qty = qty.minus(netQty);
       }
 
-      // Se quantidade fica muito pequena (floating point), zera
-      if (Math.abs(qty.toNumber()) < 1e-12) {
-        qty = new Decimal(0);
-        cost = new Decimal(0);
+      // Se sobrou só poeira, considera que zerou a posição
+      if (qty.abs().lt(EPS)) {
+        qty = ZERO;
+        cost = ZERO;
       }
+
+      Logger.debug(
+        `Trade em ${symbol} - ${trade.executedTime.toISOString()}: isBuyer=${trade.isBuyer}, qty=${qty.toString()}, cost=${cost.toString()}`,
+      );
     }
 
-    // Calcular preço médio
-    const averagePrice =
-      qty.gt(0) && qty.abs().gt(new Decimal('1e-12'))
-        ? cost.dividedBy(qty)
-        : new Decimal(0);
+    Logger.debug(
+      `Posição final em ${symbol}: qty=${qty.toString()}, cost=${cost.toString()}`,
+    );
+
+    const averagePrice = qty.abs().gte(EPS) ? cost.div(qty) : ZERO;
 
     return {
       quantity: qty,
