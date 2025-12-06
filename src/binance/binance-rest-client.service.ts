@@ -251,11 +251,20 @@ export class BinanceRestClientService {
     const priceNum = parseFloat(price);
     const notional = qty * priceNum;
 
-    // Validar LOT_SIZE (apenas mínimo e máximo)
+    this.logger.debug(
+      `[validateOrderQuantity] symbol=${symbol}, qty=${qty}, price=${priceNum}, notional=${notional}`,
+    );
+
+    // Validar LOT_SIZE (mínimo, máximo e stepSize)
     const lotSizeFilter = filters.find((f: any) => f.filterType === 'LOT_SIZE');
     if (lotSizeFilter) {
       const minQty = parseFloat(lotSizeFilter.minQty);
       const maxQty = parseFloat(lotSizeFilter.maxQty);
+      const stepSize = parseFloat(lotSizeFilter.stepSize);
+
+      this.logger.debug(
+        `[LOT_SIZE] minQty=${minQty}, maxQty=${maxQty}, stepSize=${stepSize}`,
+      );
 
       if (qty < minQty) {
         throw new Error(
@@ -267,6 +276,19 @@ export class BinanceRestClientService {
           `Quantidade ${quantity} é maior que o máximo ${maxQty} para ${symbol}`,
         );
       }
+
+      // Validar stepSize: quantidade deve ser múltiplo de stepSize
+      const remainder = qty % stepSize;
+      // Usar pequena tolerância para erros de ponto flutuante
+      if (
+        Math.abs(remainder) > 1e-10 &&
+        Math.abs(remainder - stepSize) > 1e-10
+      ) {
+        const roundedQty = Math.floor(qty / stepSize) * stepSize;
+        throw new Error(
+          `Quantidade ${quantity} não é múltiplo de ${stepSize}. Tente ${roundedQty.toFixed(8)}`,
+        );
+      }
     }
 
     // Validar MIN_NOTIONAL
@@ -275,9 +297,11 @@ export class BinanceRestClientService {
     );
     if (minNotionalFilter) {
       const minNotional = parseFloat(minNotionalFilter.minNotional);
+      this.logger.debug(`[MIN_NOTIONAL] minNotional=${minNotional}`);
+
       if (notional < minNotional) {
         throw new Error(
-          `Valor total da ordem ${notional} é menor que o mínimo ${minNotional} USDT para ${symbol}`,
+          `Valor total da ordem ${notional.toFixed(2)} é menor que o mínimo ${minNotional} USDT para ${symbol}`,
         );
       }
     }
