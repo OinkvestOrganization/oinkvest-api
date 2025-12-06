@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { BinanceRestClientService } from '@/binance/binance-rest-client.service';
 import { CryptoUtil } from '@/common/utils/crypto.util';
+import { WalletService } from '@/wallet/wallet.service';
 import {
   PlaceOrderDto,
   PlaceOrderResponseDto,
@@ -22,6 +23,7 @@ export class TradeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly binanceClient: BinanceRestClientService,
+    private readonly walletService: WalletService,
   ) {}
 
   /**
@@ -203,6 +205,18 @@ export class TradeService {
       });
 
       this.logger.log(`Ordem colocada com sucesso: orderId=${result.orderId}`);
+
+      // Sincronizar saldos após ordem bem-sucedida
+      try {
+        await this.walletService.syncSpotBalances(userId);
+        this.logger.log(`Saldos sincronizados para usuário ${userId}`);
+      } catch (syncError) {
+        this.logger.error(
+          `Erro ao sincronizar saldos após ordem: ${syncError.message}`,
+          syncError.stack,
+        );
+        // Não propaga o erro - a ordem foi executada com sucesso
+      }
 
       return {
         orderId: result.orderId.toString(),

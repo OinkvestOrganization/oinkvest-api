@@ -257,8 +257,18 @@ export class BinanceRestClientService {
       result.MIN_NOTIONAL = {
         minNotional: minNotionalFilter.minNotional,
       };
+      this.logger.log(
+        `[getSymbolFiltersForFrontend] Encontrado MIN_NOTIONAL para ${symbol}: ${minNotionalFilter.minNotional}`,
+      );
+    } else {
+      this.logger.warn(
+        `[getSymbolFiltersForFrontend] MIN_NOTIONAL não encontrado para ${symbol}. Filtros disponíveis: ${filters.map((f: any) => f.filterType).join(', ')}`,
+      );
     }
 
+    this.logger.log(
+      `[getSymbolFiltersForFrontend] ${symbol} => ${JSON.stringify(result)}`,
+    );
     return result;
   }
 
