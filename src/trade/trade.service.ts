@@ -108,6 +108,8 @@ export class TradeService {
     // 5️⃣ Validações de saldo e credenciais já foram feitas acima
     // Validar filtros de LOT_SIZE e MIN_NOTIONAL
     try {
+      let notional = 0;
+
       if (dto.quantity) {
         // Para calcular preço médio de compra/venda, precisamos do preço atual
         // Vamos usar a chamada sem assinatura ao /api/v3/ticker/price
@@ -116,28 +118,41 @@ export class TradeService {
           price: string;
         }>('/api/v3/ticker/price', { symbol: dto.symbol });
 
+        const price = parseFloat(tickerResponse.price);
+        const qty = parseFloat(dto.quantity);
+        notional = qty * price;
+
+        this.logger.debug(
+          `[placeMarketOrder] Validando quantity: ${dto.quantity}, price: ${price}, notional: ${notional}`,
+        );
+
         await this.binanceClient.validateOrderQuantity(
           dto.symbol,
           dto.quantity,
           tickerResponse.price,
         );
       } else if (dto.quoteOrderQty) {
-        // Para quoteOrderQty, o Binance automaticamente calcula a quantidade
-        // Mas ainda podemos validar o mínimo notional
-        const tickerResponse = await this.binanceClient.unsignedGet<{
-          symbol: string;
-          price: string;
-        }>('/api/v3/ticker/price', { symbol: dto.symbol });
+        // Para quoteOrderQty, o valor notional é exatamente o quoteOrderQty
+        notional = parseFloat(dto.quoteOrderQty);
 
-        const estimatedQty = (
-          parseFloat(dto.quoteOrderQty) / parseFloat(tickerResponse.price)
-        ).toString();
-
-        await this.binanceClient.validateOrderQuantity(
-          dto.symbol,
-          estimatedQty,
-          tickerResponse.price,
+        this.logger.debug(
+          `[placeMarketOrder] Validando quoteOrderQty: ${dto.quoteOrderQty}, notional: ${notional}`,
         );
+
+        // Validar o mínimo notional diretamente
+        const filters = await this.binanceClient.getSymbolFilters(dto.symbol);
+        const notionalFilter = filters.find(
+          (f: any) => f.filterType === 'NOTIONAL',
+        );
+
+        if (notionalFilter) {
+          const minNotional = parseFloat(notionalFilter.minNotional);
+          if (notional < minNotional) {
+            throw new BadRequestException(
+              `Valor total da ordem ${notional.toFixed(2)} USDT é menor que o mínimo ${minNotional} USDT para ${dto.symbol}`,
+            );
+          }
+        }
       }
     } catch (e: any) {
       throw new BadRequestException(

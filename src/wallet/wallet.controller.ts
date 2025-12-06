@@ -26,7 +26,6 @@ import {
   ListTradesQueryDto,
   ListTradesResponse,
   SyncTradesResponse,
-  TradeStatsDto,
   AllTradesSyncResponse,
   WalletTradesSummaryDto,
 } from './dto/trade.dto';
@@ -344,31 +343,6 @@ export class WalletController {
     return this.tradeService.listTrades(userId, query);
   }
 
-  @ApiOperation({
-    summary: 'Obter estatísticas de trades de um símbolo',
-    description: `
-    Retorna estatísticas agregadas de um símbolo:
-    - Total de trades
-    - Total de compras vs vendas
-    - Comissão total paga
-    - Data do primeiro e último trade
-    `,
-  })
-  @ApiOkResponse({ type: TradeStatsDto })
-  @Get('trades/stats')
-  async getTradeStats(
-    @Req() req,
-    @Query('symbol') symbol: string,
-  ): Promise<TradeStatsDto> {
-    const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-
-    if (!symbol) {
-      throw new Error('Parâmetro "symbol" é obrigatório');
-    }
-
-    return this.tradeService.getTradeStats(userId, symbol);
-  }
-
   // ==================== NOVAS FUNCIONALIDADES ====================
 
   @ApiOperation({
@@ -501,7 +475,7 @@ export class WalletController {
     - totalBuyValue / totalSellValue: valor total em USDT
     - buyCommission / sellCommission: comissão paga por tipo
     
-    💰 PREÇO MÉDIO (NOVO):
+    💰 PREÇO MÉDIO:
     - currentQuantity: quantidade líquida ATUAL da posição
     - investedCost: quanto de USDT está "preso" na posição
     - averagePrice: preço médio da posição (cost / quantity)
@@ -530,6 +504,11 @@ export class WalletController {
       → Se vender a 50.000 = lucro de 2.500 USDT
     
     Esta é uma excelente forma de ver um overview rápido do seu histórico de trades.
+    
+    💡 DICA - Para filtrar por símbolo no frontend:
+    - A resposta traz um array \`symbols\` com todos os símbolos
+    - Basta fazer um find() por symbol no array: \`data.symbols.find(s => s.symbol === 'BTCUSDT')\`
+    - Assim você pega apenas os dados do símbolo selecionado
     `,
   })
   @ApiOkResponse({
