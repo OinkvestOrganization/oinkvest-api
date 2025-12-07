@@ -73,7 +73,7 @@ export class EmailService {
   }
 
 async sendSupportTicket(userEmail: string, userName: string, subject: string, message: string) {
-    const adminEmail = process.env.EMAIL_SUPPORT;
+    const adminEmail = process.env.EMAIL_FROM;
     const dataHora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
     const html = `
