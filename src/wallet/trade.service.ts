@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CryptoUtil } from '../common/utils/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { BinanceRestClientService } from '../binance/binance-rest-client.service';
@@ -195,85 +200,134 @@ export class TradeService {
     } = query;
 
     // Validações
+    if (!symbol) {
+      throw new BadRequestException('Parâmetro "symbol" é obrigatório');
+    }
+
     if (limit > 500) {
-      throw new Error('Limite máximo de 500 registros por página');
+      throw new BadRequestException(
+        'Limite máximo de 500 registros por página',
+      );
+    }
+
+    if (page < 1) {
+      throw new BadRequestException('Página deve ser maior que 0');
     }
 
     // Construir filtros
-    const where: any = { userId, symbol };
+    const where: any = { userId, symbol: symbol.toUpperCase() };
 
     // Filtro de data
     if (startDate || endDate) {
       where.executedTime = {};
-      if (startDate) {
-        where.executedTime.gte = new Date(startDate);
-      }
-      if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999);
-        where.executedTime.lte = endDateTime;
+      try {
+        if (startDate) {
+          const start = new Date(startDate);
+          if (isNaN(start.getTime())) {
+            throw new Error('Data inicial inválida');
+          }
+          start.setHours(0, 0, 0, 0);
+          where.executedTime.gte = start;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          if (isNaN(end.getTime())) {
+            throw new Error('Data final inválida');
+          }
+          end.setHours(23, 59, 59, 999);
+          where.executedTime.lte = end;
+        }
+      } catch (error: any) {
+        throw new BadRequestException(
+          `Data inválida: ${error.message}. Use o formato YYYY-MM-DD`,
+        );
       }
     }
 
     // Filtro de tipo de operação
-    if (type === 'BUY') {
-      where.isBuyer = true;
-    } else if (type === 'SELL') {
-      where.isBuyer = false;
+    if (type && type !== 'ALL') {
+      where.isBuyer = type === 'BUY';
     }
 
-    // Contar total
-    const total = await this.prisma.trade.count({ where });
+    try {
+      // Contar total
+      const total = await this.prisma.trade.count({ where });
 
-    // Calcular skip
-    const skip = (page - 1) * limit;
-    const pages = Math.ceil(total / limit);
+      // Se nenhuma trade encontrada
+      if (total === 0) {
+        return {
+          data: [],
+          page,
+          limit,
+          total: 0,
+          pages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        };
+      }
 
-    // Buscar dados
-    const trades = await this.prisma.trade.findMany({
-      where,
-      orderBy: { executedTime: sortOrder === 'ASC' ? 'asc' : 'desc' },
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        symbol: true,
-        tradeId: true,
-        orderId: true,
-        price: true,
-        quantity: true,
-        quoteQuantity: true,
-        commission: true,
-        commissionAsset: true,
-        isBuyer: true,
-        isMaker: true,
-        isBestMatch: true,
-        executedTime: true,
-        lastSyncAt: true,
-        createdAt: true,
-      },
-    });
+      // Calcular skip
+      const skip = (page - 1) * limit;
+      const pages = Math.ceil(total / limit);
 
-    // Converter bigint para string
-    const formattedTrades = trades.map((trade) => ({
-      ...trade,
-      tradeId: trade.tradeId.toString(),
-      orderId: trade.orderId.toString(),
-      price: trade.price.toString(),
-      quantity: trade.quantity.toString(),
-      quoteQuantity: trade.quoteQuantity.toString(),
-      commission: trade.commission.toString(),
-    }));
+      // Validar página
+      if (page > pages) {
+        throw new BadRequestException(
+          `Página ${page} não existe. Total de páginas: ${pages}`,
+        );
+      }
 
-    return {
-      data: formattedTrades,
-      page,
-      limit,
-      total,
-      pages,
-      hasNextPage: page < pages,
-      hasPrevPage: page > 1,
-    };
+      // Buscar dados
+      const trades = await this.prisma.trade.findMany({
+        where,
+        orderBy: { executedTime: sortOrder === 'ASC' ? 'asc' : 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          symbol: true,
+          tradeId: true,
+          orderId: true,
+          price: true,
+          quantity: true,
+          quoteQuantity: true,
+          commission: true,
+          commissionAsset: true,
+          isBuyer: true,
+          isMaker: true,
+          isBestMatch: true,
+          executedTime: true,
+          lastSyncAt: true,
+          createdAt: true,
+        },
+      });
+
+      // Converter bigint para string e Decimal para string
+      const formattedTrades = trades.map((trade) => ({
+        ...trade,
+        tradeId: trade.tradeId.toString(),
+        orderId: trade.orderId.toString(),
+        price: trade.price.toString(),
+        quantity: trade.quantity.toString(),
+        quoteQuantity: trade.quoteQuantity.toString(),
+        commission: trade.commission.toString(),
+      }));
+
+      return {
+        data: formattedTrades,
+        page,
+        limit,
+        total,
+        pages,
+        hasNextPage: page < pages,
+        hasPrevPage: page > 1,
+      };
+    } catch (error: any) {
+      this.logger.error(`Erro ao listar trades: ${error.message}`, error.stack);
+      throw new BadRequestException(
+        error.message || 'Erro ao buscar trades do banco de dados',
+      );
+    }
   }
 
   /**

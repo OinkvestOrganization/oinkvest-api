@@ -1,4 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  IsPositive,
+  Max,
+  IsEnum,
+  Matches,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class TradeDto {
   @ApiProperty({
@@ -135,6 +145,7 @@ export class ListTradesQueryDto {
     required: true,
     description: 'Símbolo/par para filtrar trades',
   })
+  @IsString({ message: 'symbol deve ser uma string' })
   symbol: string;
 
   @ApiProperty({
@@ -143,7 +154,13 @@ export class ListTradesQueryDto {
     description: 'Página para paginação (começa em 1)',
     minimum: 1,
   })
-  page?: number;
+  @Transform(({ value }) =>
+    value === undefined || value === '' ? 1 : Number(value),
+  )
+  @IsInt({ message: 'page deve ser um número inteiro' })
+  @IsPositive({ message: 'page deve ser maior que 0' })
+  @IsOptional()
+  page?: number = 1;
 
   @ApiProperty({
     example: 50,
@@ -152,13 +169,25 @@ export class ListTradesQueryDto {
     minimum: 1,
     maximum: 500,
   })
-  limit?: number;
+  @Transform(({ value }) =>
+    value === undefined || value === '' ? 50 : Number(value),
+  )
+  @IsInt({ message: 'limit deve ser um número inteiro' })
+  @IsPositive({ message: 'limit deve ser maior que 0' })
+  @Max(500, { message: 'limit não pode exceder 500' })
+  @IsOptional()
+  limit?: number = 50;
 
   @ApiProperty({
     example: '2025-01-01',
     required: false,
     description: 'Data inicial para filtro (YYYY-MM-DD)',
   })
+  @IsString({ message: 'startDate deve ser uma string' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'startDate deve estar no formato YYYY-MM-DD',
+  })
+  @IsOptional()
   startDate?: string;
 
   @ApiProperty({
@@ -166,6 +195,11 @@ export class ListTradesQueryDto {
     required: false,
     description: 'Data final para filtro (YYYY-MM-DD)',
   })
+  @IsString({ message: 'endDate deve ser uma string' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'endDate deve estar no formato YYYY-MM-DD',
+  })
+  @IsOptional()
   endDate?: string;
 
   @ApiProperty({
@@ -174,7 +208,11 @@ export class ListTradesQueryDto {
     enum: ['BUY', 'SELL', 'ALL'],
     description: 'Filtrar por tipo de operação',
   })
-  type?: 'BUY' | 'SELL' | 'ALL';
+  @IsEnum(['BUY', 'SELL', 'ALL'], {
+    message: "type deve ser 'BUY', 'SELL' ou 'ALL'",
+  })
+  @IsOptional()
+  type?: 'BUY' | 'SELL' | 'ALL' = 'ALL';
 
   @ApiProperty({
     example: 'DESC',
@@ -182,7 +220,11 @@ export class ListTradesQueryDto {
     enum: ['ASC', 'DESC'],
     description: 'Ordenar por data de execução',
   })
-  sortOrder?: 'ASC' | 'DESC';
+  @IsEnum(['ASC', 'DESC'], {
+    message: "sortOrder deve ser 'ASC' ou 'DESC'",
+  })
+  @IsOptional()
+  sortOrder?: 'ASC' | 'DESC' = 'DESC';
 }
 
 export class ListTradesResponse {
