@@ -139,9 +139,6 @@ export class TradeController {
   @HttpCode(HttpStatus.CREATED)
   async placeOrder(@Req() req, @Body() dto: PlaceOrderDto) {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-    this.logger.log(
-      `Colocando ordem para user ${userId}: ${dto.symbol} ${dto.side}`,
-    );
     return this.tradeService.placeMarketOrder(userId, dto);
   }
 

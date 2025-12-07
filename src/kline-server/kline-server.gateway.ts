@@ -28,7 +28,6 @@ export class KlineServerGateway
 
   afterInit(server: Server) {
     this.wsServerService.setServer(server);
-    this.logger.log('WebSocket server initialized and passed to service');
   }
 
   handleConnection(client: Socket) {

@@ -24,12 +24,9 @@ export class KlineServerService {
     this.server = server;
   }
 
-  registerClient(client: Socket) {
-    this.logger.log(`Client conectado: ${client.id}`);
-  }
+  registerClient(client: Socket) {}
 
   deregisterClient(client: Socket) {
-    this.logger.log(`Client desconectado: ${client.id}`);
     this.unsubscribeClientFromAllStreams(client.id);
   }
 
@@ -38,7 +35,6 @@ export class KlineServerService {
     if (!payload) return;
 
     const streamName = this.getStreamName(payload.symbol, payload.interval);
-    this.logger.log(`Client ${client.id} inscrito em: ${streamName}`);
 
     if (!this.streamSubscribers.has(streamName)) {
       this.streamSubscribers.set(streamName, new Set());
@@ -77,15 +73,11 @@ export class KlineServerService {
     if (!subscribers?.has(clientId)) return;
 
     subscribers.delete(clientId);
-    this.logger.log(`Client ${clientId} desinscrito do stream: ${streamName}`);
 
     if (subscribers.size === 0) {
       // Last subscriber left, unsubscribe from Binance
       this.streamSubscribers.delete(streamName);
       this.binanceStreamClient.unsubscribeFromStream(streamName);
-      this.logger.log(
-        `Removendo inscrição do stream ${streamName} do Binance Stream Client como não há mais clientes.`,
-      );
     }
   }
 
@@ -120,7 +112,6 @@ export class KlineServerService {
       try {
         return JSON.parse(data) as KlineSubscriptionDto;
       } catch (e: any) {
-        this.logger.error('Invalid JSON for subscription', data, e);
         client.emit('error', 'Invalid data format');
         return null;
       }

@@ -16,9 +16,7 @@ export class KlineHistoryService {
   private connect() {
     this.ws = new WebSocket(this.wsRestBinance);
 
-    this.ws.on('open', () => {
-      this.logger.log('Conexão com Binance WebSocket API aberta');
-    });
+    this.ws.on('open', () => {});
 
     this.ws.on('message', (data: Buffer) => {
       const message = JSON.parse(data.toString());
@@ -27,20 +25,13 @@ export class KlineHistoryService {
       if (resolve) {
         resolve(message.result);
         this.pendingRequests.delete(message.id);
-      } else {
-        this.logger.debug('Binance WebSocket API message:', message);
       }
     });
 
-    this.ws.on('error', (error) => {
-      this.logger.error('Binance WebSocket error:', error);
-    });
+    this.ws.on('error', (error) => {});
   }
 
   async getHistory(symbol: string, interval: string, limit = 1): Promise<any> {
-    this.logger.debug(
-      `Buscando histórico de klines para ${symbol} com intervalo ${interval} e limite ${limit}`,
-    );
     return new Promise((resolve, reject) => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         const requestId = randomUUID();

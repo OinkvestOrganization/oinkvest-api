@@ -154,7 +154,6 @@ export class AuthService {
     });
 
     if (!user) {
-      this.logger.error('Token inválido');
       throw new UnauthorizedException('Token inválido');
     }
 
@@ -164,7 +163,6 @@ export class AuthService {
     try {
       await this.usersService.changePassword(user.id, hashedPassword);
     } catch (error) {
-      this.logger.error(error);
       throw new InternalServerErrorException(error);
     }
     return { message: 'Senha redefinida com sucesso.' };

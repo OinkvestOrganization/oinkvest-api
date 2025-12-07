@@ -70,10 +70,6 @@ export class TradeService {
     let fromId: number | undefined = undefined;
     let lastTradeTime: Date | undefined = undefined;
 
-    this.logger.log(
-      `Iniciando sincronização de trades para ${symbol} do usuário ${userId}`,
-    );
-
     while (hasMore) {
       try {
         const params: Record<string, any> = {
@@ -138,18 +134,11 @@ export class TradeService {
         // Atualiza o fromId para a próxima paginação
         fromId = trades[trades.length - 1].id;
 
-        this.logger.log(
-          `Sincronizadas ${trades.length} trades. Total: ${totalSynced}`,
-        );
-
         // Se recebeu menos de 1000 trades, não há mais dados
         if (trades.length < 1000) {
           hasMore = false;
         }
       } catch (error) {
-        this.logger.error(
-          `Erro ao sincronizar trades para ${symbol}: ${error.message}`,
-        );
         throw error;
       }
     }
@@ -158,10 +147,6 @@ export class TradeService {
     const totalInDatabase = await this.prisma.trade.count({
       where: { userId, symbol },
     });
-
-    this.logger.log(
-      `Sincronização concluída para ${symbol}: ${totalSynced} novos, ${totalInDatabase} total`,
-    );
 
     return {
       synced: totalSynced,
@@ -183,7 +168,6 @@ export class TradeService {
         const result = await this.syncTradesForSymbol(userId, symbol);
         results.push(result);
       } catch (error) {
-        this.logger.error(`Erro ao sincronizar ${symbol}: ${error.message}`);
         results.push({
           symbol,
           synced: 0,
@@ -333,8 +317,6 @@ export class TradeService {
       where: { userId },
     });
 
-    this.logger.log(`${result.count} trades deletadas para usuário ${userId}`);
-
     return { deleted: result.count };
   }
 
@@ -354,10 +336,6 @@ export class TradeService {
    * com saldo diferente de zero
    */
   async getWalletAssetSymbols(userId: string): Promise<string[]> {
-    this.logger.log(
-      `Obtendo símbolos com saldo > 0 da carteira do usuário ${userId}`,
-    );
-
     try {
       // Buscar todos os ativos com saldo > 0 na WalletBalance
       const balances = await this.prisma.walletBalance.findMany({
@@ -370,24 +348,14 @@ export class TradeService {
       });
 
       if (balances.length === 0) {
-        this.logger.warn(
-          `Nenhum ativo com saldo encontrado para o usuário ${userId}. Execute /wallet/sync/balances primeiro.`,
-        );
         return [];
       }
 
       // Converter assets em símbolos USDT (ex: BTC -> BTCUSDT, ETH -> ETHUSDT)
       const symbols = balances.map((b) => `${b.asset}USDT`);
 
-      this.logger.log(
-        `Obtidos ${symbols.length} símbolos com saldo para sincronizar: ${symbols.join(', ')}`,
-      );
-
       return symbols;
     } catch (error) {
-      this.logger.error(
-        `Erro ao obter símbolos da carteira para ${userId}: ${error.message}`,
-      );
       throw error;
     }
   }
@@ -406,8 +374,6 @@ export class TradeService {
       throw new NotFoundException('Credenciais da Binance não encontradas');
     }
 
-    this.logger.log(`Descobrindo símbolos para o usuário ${userId}`);
-
     try {
       // Usar HttpService diretamente para chamadas públicas
       const response = await fetch(
@@ -420,7 +386,6 @@ export class TradeService {
       const exchangeInfo = await response.json();
 
       if (!exchangeInfo || !exchangeInfo.symbols) {
-        this.logger.error('Não foi possível obter exchange info');
         throw new Error('Falha ao obter informações da exchange');
       }
 
@@ -436,13 +401,8 @@ export class TradeService {
         )
         .map((s: any) => s.symbol);
 
-      this.logger.log(
-        `Descobertos ${usdtSymbols.length} símbolos USDT disponíveis para sincronizar`,
-      );
-
       return usdtSymbols;
     } catch (error) {
-      this.logger.error(`Erro ao descobrir símbolos: ${error.message}`);
       throw error;
     }
   }
@@ -456,10 +416,6 @@ export class TradeService {
     userId: string,
     options?: { skipSymbols?: string[] },
   ) {
-    this.logger.log(
-      `Iniciando sincronização COMPLETA de histórico para usuário ${userId}`,
-    );
-
     const skipSymbols = new Set(options?.skipSymbols || []);
 
     // Obter apenas os símbolos da carteira com saldo > 0
@@ -467,16 +423,10 @@ export class TradeService {
     try {
       symbolsWithBalance = await this.getWalletAssetSymbols(userId);
     } catch (error) {
-      this.logger.error(
-        `Falha ao obter símbolos da carteira para ${userId}: ${error.message}`,
-      );
       throw error;
     }
 
     if (symbolsWithBalance.length === 0) {
-      this.logger.warn(
-        `Nenhum símbolo com saldo encontrado para sincronização. Execute /wallet/sync/balances primeiro.`,
-      );
       return {
         status: 'no_assets',
         totalSymbols: 0,
@@ -492,10 +442,6 @@ export class TradeService {
 
     // Sincronizar apenas os símbolos da carteira (filtrando os skip)
     const symbolsToSync = symbolsWithBalance.filter((s) => !skipSymbols.has(s));
-
-    this.logger.log(
-      `Sincronizando ${symbolsToSync.length} símbolos da carteira para ${userId}`,
-    );
 
     const results = await this.syncTradesForMultipleSymbols(
       userId,
@@ -533,10 +479,6 @@ export class TradeService {
     userId: string,
     options?: { skipSymbols?: string[] },
   ) {
-    this.logger.log(
-      `Iniciando sincronização COMPLETA de TODOS os símbolos USDT para usuário ${userId}`,
-    );
-
     const skipSymbols = new Set(options?.skipSymbols || []);
 
     // Descobrir TODOS os símbolos USDT da exchange (AVISO: pode ser muitos!)
@@ -544,22 +486,11 @@ export class TradeService {
     try {
       allSymbols = await this.discoverUserSymbols(userId);
     } catch (error) {
-      this.logger.error(
-        `Falha ao descobrir símbolos para ${userId}: ${error.message}`,
-      );
       throw error;
     }
 
-    this.logger.warn(
-      `⚠️ Sincronizando ${allSymbols.length} símbolos USDT. Isto pode levar MUITO TEMPO!`,
-    );
-
     // Sincronizar TODOS os símbolos encontrados (sem limite)
     const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
-
-    this.logger.log(
-      `Iniciando sincronização de ${symbolsToSync.length} símbolos para ${userId}`,
-    );
 
     const results = await this.syncTradesForMultipleSymbols(
       userId,
@@ -704,15 +635,7 @@ export class TradeService {
         qty = ZERO;
         cost = ZERO;
       }
-
-      Logger.debug(
-        `Trade em ${symbol} - ${trade.executedTime.toISOString()}: isBuyer=${trade.isBuyer}, qty=${qty.toString()}, cost=${cost.toString()}`,
-      );
     }
-
-    Logger.debug(
-      `Posição final em ${symbol}: qty=${qty.toString()}, cost=${cost.toString()}`,
-    );
 
     const averagePrice = qty.abs().gte(EPS) ? cost.div(qty) : ZERO;
 

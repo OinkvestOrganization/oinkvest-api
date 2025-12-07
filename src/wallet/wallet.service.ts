@@ -72,7 +72,6 @@ export class WalletService {
       (b) => parseFloat(b.free) + parseFloat(b.locked) > 0,
     );
 
-    Logger.log(`Saldos obtidos: ${balances.length} ativos para user ${userId}`);
     return balances;
   }
 
@@ -151,9 +150,6 @@ export class WalletService {
         },
       });
 
-      this.logger.log(
-        `Sync de saldos concluído: ${items.length} ativos para user ${userId}`,
-      );
       return { updated: items.length };
     } catch (e: any) {
       const message = e?.message ?? 'Erro desconhecido';
@@ -166,7 +162,6 @@ export class WalletService {
           message,
         },
       });
-      this.logger.error(`Sync de saldos falhou para ${userId}: ${message}`);
       throw e;
     }
   }

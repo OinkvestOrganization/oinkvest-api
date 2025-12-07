@@ -20,7 +20,7 @@ export class BinanceStreamClientService implements OnModuleInit {
     this.ws = new WebSocket(this.binanceWsUrl);
 
     this.ws.onopen = () => {
-      this.logger.log('Conectado ao Binance WebSocket Stream');
+      // Conectado ao WebSocket
     };
 
     this.ws.onmessage = (event) => {
@@ -28,24 +28,20 @@ export class BinanceStreamClientService implements OnModuleInit {
 
       if (message.k) {
         const streamName = `${message.s.toLowerCase()}@kline_${message.k.i}`;
-        const wasSent = this.eventEmitter.emit(`binance.stream.${streamName}`, {
+        this.eventEmitter.emit(`binance.stream.${streamName}`, {
           stream: streamName,
           data: message,
         });
-        if (!wasSent) {
-          this.logger.warn(`Nenhum listener para o evento ${streamName}`);
-        }
       }
     };
 
     this.ws.onclose = () => {
-      this.logger.log('Desconectado do Binance WebSocket');
       // Attempt to reconnect after a delay
       setTimeout(() => this.connect(), 1000);
     };
 
-    this.ws.onerror = (error) => {
-      this.logger.error('Binance WebSocket error:', error);
+    this.ws.onerror = () => {
+      // Erro na conexão
     };
   }
 
@@ -61,13 +57,10 @@ export class BinanceStreamClientService implements OnModuleInit {
             }),
           );
           this.streamPool.add(streamName);
-          this.logger.log(`Inscrito no stream: ${streamName}`);
-        } else {
-          this.logger.log(`Já inscrito no stream: ${streamName}`);
         }
       }
-    } catch (e: any) {
-      this.logger.error(e.message);
+    } catch {
+      // Ignorar erros ao inscrever
     }
   }
 
@@ -83,13 +76,10 @@ export class BinanceStreamClientService implements OnModuleInit {
             }),
           );
           this.streamPool.delete(streamName);
-          this.logger.log(`Removendo inscrição do stream : ${streamName}`);
-        } else {
-          this.logger.log(`Stream não encontrada: ${streamName}`);
         }
       }
-    } catch (e: any) {
-      this.logger.error(e.message);
+    } catch {
+      // Ignorar erros ao desinscrever
     }
   }
 

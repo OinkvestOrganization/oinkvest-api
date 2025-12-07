@@ -108,7 +108,6 @@ export class WalletController {
   @Post('credentials')
   saveCredentials(@Req() req, @Body() dto: CreateExchangeCredentialDto) {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-    this.logger.log('Salvando credenciais para user ' + userId);
     return this.walletService.upsertCredentials(userId, dto);
   }
 
@@ -234,7 +233,6 @@ export class WalletController {
       throw new Error('Parâmetro "symbol" é obrigatório');
     }
 
-    this.logger.log(`Iniciando sincronização de trades para ${symbol}`);
     return this.tradeService.syncTradesForSymbol(userId, symbol);
   }
 
@@ -301,9 +299,6 @@ export class WalletController {
       );
     }
 
-    this.logger.log(
-      `Iniciando sincronização de trades para ${symbols.length} símbolos`,
-    );
     return this.tradeService.syncTradesForMultipleSymbols(userId, symbols);
   }
 
@@ -394,9 +389,6 @@ export class WalletController {
   async syncWalletTrades(@Req() req): Promise<any> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
 
-    this.logger.log(
-      `Iniciando sincronização de trades dos ATIVOS DA CARTEIRA para ${userId}`,
-    );
     return this.tradeService.syncAllTradesForWallet(userId);
   }
 
@@ -447,9 +439,6 @@ export class WalletController {
   async syncAllTrades(@Req() req): Promise<any> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
 
-    this.logger.log(
-      `Iniciando sincronização COMPLETA de TODAS as trades para ${userId}`,
-    );
     return this.tradeService.syncAllTradesForWalletAllSymbols(userId);
   }
 
@@ -519,7 +508,6 @@ export class WalletController {
   async getTradesSummary(@Req() req): Promise<any> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
 
-    this.logger.log(`Gerando resumo de trades para ${userId}`);
     return this.tradeService.getWalletTradesSummary(userId);
   }
 
@@ -539,7 +527,6 @@ export class WalletController {
   async deleteAllTrades(@Req() req): Promise<any> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
 
-    this.logger.warn(`Usuário ${userId} está deletando todos os trades`);
     return this.tradeService.deleteAllTrades(userId);
   }
 }

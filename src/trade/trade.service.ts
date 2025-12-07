@@ -124,10 +124,6 @@ export class TradeService {
         const qty = parseFloat(dto.quantity);
         notional = qty * price;
 
-        this.logger.debug(
-          `[placeMarketOrder] Validando quantity: ${dto.quantity}, price: ${price}, notional: ${notional}`,
-        );
-
         await this.binanceClient.validateOrderQuantity(
           dto.symbol,
           dto.quantity,
@@ -136,10 +132,6 @@ export class TradeService {
       } else if (dto.quoteOrderQty) {
         // Para quoteOrderQty, o valor notional é exatamente o quoteOrderQty
         notional = parseFloat(dto.quoteOrderQty);
-
-        this.logger.debug(
-          `[placeMarketOrder] Validando quoteOrderQty: ${dto.quoteOrderQty}, notional: ${notional}`,
-        );
 
         // Validar o mínimo notional diretamente
         const filters = await this.binanceClient.getSymbolFilters(dto.symbol);
@@ -172,9 +164,7 @@ export class TradeService {
     };
 
     try {
-      // 7️⃣ Chamar Binance API
-      this.logger.log(`Colocando ordem: ${JSON.stringify(binanceParams)}`);
-
+      // 7✍️ Chamar Binance API
       const binanceResponse = await this.binanceClient.signedPost<any>(
         '/api/v3/order',
         apiKey,
@@ -221,17 +211,10 @@ export class TradeService {
         return order;
       });
 
-      this.logger.log(`Ordem colocada com sucesso: orderId=${result.orderId}`);
-
       // Sincronizar saldos após ordem bem-sucedida
       try {
         await this.walletService.syncSpotBalances(userId);
-        this.logger.log(`Saldos sincronizados para usuário ${userId}`);
-      } catch (syncError) {
-        this.logger.error(
-          `Erro ao sincronizar saldos após ordem: ${syncError.message}`,
-          syncError.stack,
-        );
+      } catch {
         // Não propaga o erro - a ordem foi executada com sucesso
       }
 
@@ -241,28 +224,15 @@ export class TradeService {
       // Solução temporária: após cada ordem, deletar trades e resincronizar tudo
       // Solução permanente: revisar a lógica de cálculo de average price
       try {
-        this.logger.log(
-          `[GAMBIARRA] Iniciando resync completo de trades para ${userId}...`,
-        );
-
         // 1. Deletar todas as trades do banco
         await this.prisma.trade.deleteMany({ where: { userId } });
-        this.logger.log(`[GAMBIARRA] Todas as trades deletadas`);
 
         // 2. Sincronizar saldos (para ter dados atualizados)
         await this.walletService.syncSpotBalances(userId);
-        this.logger.log(`[GAMBIARRA] Saldos re-sincronizados`);
 
         // 3. Sincronizar todas as trades da carteira Binance
         await this.walletTradeService.syncAllTradesForWallet(userId);
-        this.logger.log(`[GAMBIARRA] Trades re-sincronizadas do Binance`);
-
-        this.logger.log(`[GAMBIARRA] Resync completo concluído para ${userId}`);
-      } catch (resynError) {
-        this.logger.error(
-          `[GAMBIARRA] Erro durante resync: ${resynError.message}`,
-          resynError.stack,
-        );
+      } catch {
         // Não propaga - a ordem já foi executada com sucesso
       }
 
@@ -282,10 +252,6 @@ export class TradeService {
       };
     } catch (error) {
       // 8️⃣ Tratar erros
-      this.logger.error(
-        `Falha ao colocar ordem: ${error.message}`,
-        error.stack,
-      );
 
       // Log de erro
       await this.prisma.orderLog.create({

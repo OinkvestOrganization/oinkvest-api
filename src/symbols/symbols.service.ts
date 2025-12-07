@@ -20,11 +20,9 @@ export class SymbolsService {
     const cachedData: BinanceExchangeInfo | undefined =
       await this.cacheManager.get(this.CACHE_KEY);
     if (cachedData) {
-      this.logger.log('Retornando dados do cache');
       return cachedData;
     }
     try {
-      this.logger.log('Cache vazio. Buscando dados da Binance...');
       const data = await this.binance.unsignedGet('/api/v3/exchangeInfo', {
         permissions: ['SPOT'],
       });
@@ -53,10 +51,8 @@ export class SymbolsService {
       const spotPairs: BinanceExchangeInfo = { symbols };
 
       await this.cacheManager.set(this.CACHE_KEY, spotPairs, 3600000); // Ex: 1 hora (3.600.000 ms)
-      this.logger.log('Dados da Binance armazenados no cache');
       return spotPairs;
     } catch (error) {
-      this.logger.error('Erro ao buscar pares na Binance', error);
       throw error;
     }
   }
@@ -65,13 +61,10 @@ export class SymbolsService {
     const foundSymbols = await this.getSpotPairs();
 
     if (!partialSymbol) {
-      this.logger.log('Retornando todos os pares');
       return foundSymbols;
     }
 
     const searchParameter = partialSymbol.trim().replace(' ', '').toUpperCase();
-
-    this.logger.log(`Buscando pares que contenham ${searchParameter}`);
     const filteredSymbols = foundSymbols.symbols.filter(
       (symbol) =>
         symbol.symbol.toUpperCase().includes(searchParameter) ||

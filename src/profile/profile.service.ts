@@ -32,7 +32,6 @@ export class ProfileService {
       await this.userService.changeName(id, newName);
       return { message: 'Nome de usuário alterado com sucesso.' };
     } catch (error) {
-      this.logger.error(error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -44,7 +43,6 @@ export class ProfileService {
     try {
       return this.userService.updatePassword(id, updatePassword);
     } catch (error) {
-      this.logger.error(error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -57,7 +55,6 @@ export class ProfileService {
       await this.userService.deactivate(id);
       return { message: 'Conta desativada com sucesso.' };
     } catch (error) {
-      this.logger.error(error);
       if (
         error instanceof NotFoundException ||
         error instanceof ConflictException

@@ -159,13 +159,11 @@ export class UserService {
     const user = await this.prisma.user.findUnique({ where: { id } });
 
     if (!user || user.status === $Enums.Status.INACTIVE) {
-      this.logger.error('User not found');
       throw new BadRequestException('Usuário não encontrado');
     }
 
     const isPasswordMatching = await bcrypt.compare(oldPassword, user.senha);
     if (!isPasswordMatching) {
-      this.logger.error('Old password is incorrect');
       throw new BadRequestException('Senha antiga incorreta');
     }
 

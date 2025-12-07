@@ -72,13 +72,8 @@ export class BinanceRestClientService {
       const server = data.serverTime;
       const local = Date.now();
       this.timeOffsetMs = server - local; // se positivo, server está à frente
-      this.logger.log(`Binance time offset ajustado: ${this.timeOffsetMs}ms`);
     } catch (e) {
       // Não falhe duro na sync inicial de tempo; apenas logue
-      const { code, msg } = this.extractErrInfo(e);
-      this.logger.warn(
-        `Falha ao sincronizar tempo com Binance [${code}]: ${msg}`,
-      );
       // mantém NaN => buildSignedQuery usará Date.now()
     }
   }
@@ -113,9 +108,6 @@ export class BinanceRestClientService {
       const { code, msg } = this.extractErrInfo(e);
       // Timestamp fora da janela: re-sincroniza e tenta 1x novamente
       if (msg.includes('Timestamp') || msg.includes('-1021')) {
-        this.logger.warn(
-          `Timestamp fora da janela (-1021). Re-sincronizando tempo e tentando novamente...`,
-        );
         await this.syncServerTime();
         return attempt();
       }
@@ -211,7 +203,6 @@ export class BinanceRestClientService {
   ): Promise<T> {
     const query = new URLSearchParams(params).toString();
     const url = `${this.baseUrl}${path}?${query}`;
-    this.logger.log(`GET ${url}`);
     const { data } = await firstValueFrom(
       this.http.get<T>(url, { timeout: 10000 }),
     );
@@ -260,13 +251,6 @@ export class BinanceRestClientService {
         minNotional: notionalFilter.minNotional,
         maxNotional: notionalFilter.maxNotional,
       };
-      this.logger.log(
-        `[getSymbolFiltersForFrontend] Encontrado NOTIONAL para ${symbol}: minNotional=${notionalFilter.minNotional}, maxNotional=${notionalFilter.maxNotional}`,
-      );
-    } else {
-      this.logger.warn(
-        `[getSymbolFiltersForFrontend] NOTIONAL não encontrado para ${symbol}. Filtros disponíveis: ${filters.map((f: any) => f.filterType).join(', ')}`,
-      );
     }
 
     return result;
@@ -289,20 +273,12 @@ export class BinanceRestClientService {
     const priceNum = parseFloat(price);
     const notional = qty * priceNum;
 
-    this.logger.debug(
-      `[validateOrderQuantity] symbol=${symbol}, qty=${qty}, price=${priceNum}, notional=${notional}`,
-    );
-
     // Validar LOT_SIZE (mínimo, máximo e stepSize)
     const lotSizeFilter = filters.find((f: any) => f.filterType === 'LOT_SIZE');
     if (lotSizeFilter) {
       const minQty = parseFloat(lotSizeFilter.minQty);
       const maxQty = parseFloat(lotSizeFilter.maxQty);
       const stepSize = parseFloat(lotSizeFilter.stepSize);
-
-      this.logger.debug(
-        `[LOT_SIZE] minQty=${minQty}, maxQty=${maxQty}, stepSize=${stepSize}`,
-      );
 
       if (qty < minQty) {
         throw new Error(
@@ -335,7 +311,6 @@ export class BinanceRestClientService {
     );
     if (notionalFilter) {
       const minNotional = parseFloat(notionalFilter.minNotional);
-      this.logger.debug(`[NOTIONAL] minNotional=${minNotional}`);
 
       if (notional < minNotional) {
         throw new Error(
