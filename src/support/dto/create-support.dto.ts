@@ -4,7 +4,7 @@ export class CreateSupportDto {
     
   @IsNotEmpty({ message: 'O assunto é obrigatório.' })
   @IsString()
-  @Length(10, 255, { message: 'A mensagem deve ter entre 10 e 255 caracteres.' })
+  @Length(10, 255, { message: 'O assunto deve ter entre 10 e 255 caracteres' })
     subject: string;
 
   @IsNotEmpty({ message: 'A mensagem é obrigatória.' })
