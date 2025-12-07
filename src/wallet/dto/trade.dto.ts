@@ -142,11 +142,13 @@ export class SyncTradesResponse {
 export class ListTradesQueryDto {
   @ApiProperty({
     example: 'BTCUSDT',
-    required: true,
-    description: 'Símbolo/par para filtrar trades',
+    required: false,
+    description:
+      'Símbolo/par para filtrar trades. Se omitido, retorna todas as moedas',
   })
   @IsString({ message: 'symbol deve ser uma string' })
-  symbol: string;
+  @IsOptional()
+  symbol?: string;
 
   @ApiProperty({
     example: 1,

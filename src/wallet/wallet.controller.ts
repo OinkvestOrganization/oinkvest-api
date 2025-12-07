@@ -306,6 +306,7 @@ export class WalletController {
     summary: 'Listar trades com filtros e paginação',
     description: `
     Lista os trades armazenados no banco de dados com suporte a:
+    - Filtros por símbolo (opcional - se omitido, retorna todos)
     - Filtros por data
     - Filtros por tipo (compra/venda)
     - Paginação completa
@@ -313,8 +314,11 @@ export class WalletController {
     
     **Exemplos:**
     
-    Últimos 50 trades:
+    Últimos 50 trades de um símbolo específico:
     \`/wallet/trades?symbol=BTCUSDT&page=1&limit=50\`
+    
+    TODOS os trades de toda a carteira (sem filtro de símbolo):
+    \`/wallet/trades?page=1&limit=50\`
     
     Trades de uma data específica:
     \`/wallet/trades?symbol=BTCUSDT&startDate=2025-01-01&endDate=2025-01-31\`
@@ -330,10 +334,6 @@ export class WalletController {
     @Query() query: ListTradesQueryDto,
   ): Promise<ListTradesResponse> {
     const userId = req.user?.userId ?? req.user?.id ?? req.user?.sub;
-
-    if (!query.symbol) {
-      throw new Error('Parâmetro "symbol" é obrigatório');
-    }
 
     return this.tradeService.listTrades(userId, query);
   }
