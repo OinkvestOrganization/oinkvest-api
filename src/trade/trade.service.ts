@@ -8,6 +8,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { BinanceRestClientService } from '@/binance/binance-rest-client.service';
 import { CryptoUtil } from '@/common/utils/crypto.util';
 import { WalletService } from '@/wallet/wallet.service';
+import { TradeService as WalletTradeService } from '@/wallet/trade.service';
 import {
   PlaceOrderDto,
   PlaceOrderResponseDto,
@@ -24,6 +25,7 @@ export class TradeService {
     private readonly prisma: PrismaService,
     private readonly binanceClient: BinanceRestClientService,
     private readonly walletService: WalletService,
+    private readonly walletTradeService: WalletTradeService,
   ) {}
 
   /**
@@ -231,6 +233,37 @@ export class TradeService {
           syncError.stack,
         );
         // Não propaga o erro - a ordem foi executada com sucesso
+      }
+
+      // 🔧 GAMBIARRA TEMPORÁRIA: Resync completo de trades
+      // TODO: Remover essa gambiarra quando calculateAveragePrice() for corrigido
+      // O problema: calculateAveragePrice() às vezes retorna qty negativa, zerando a posição
+      // Solução temporária: após cada ordem, deletar trades e resincronizar tudo
+      // Solução permanente: revisar a lógica de cálculo de average price
+      try {
+        this.logger.log(
+          `[GAMBIARRA] Iniciando resync completo de trades para ${userId}...`,
+        );
+
+        // 1. Deletar todas as trades do banco
+        await this.prisma.trade.deleteMany({ where: { userId } });
+        this.logger.log(`[GAMBIARRA] Todas as trades deletadas`);
+
+        // 2. Sincronizar saldos (para ter dados atualizados)
+        await this.walletService.syncSpotBalances(userId);
+        this.logger.log(`[GAMBIARRA] Saldos re-sincronizados`);
+
+        // 3. Sincronizar todas as trades da carteira Binance
+        await this.walletTradeService.syncAllTradesForWallet(userId);
+        this.logger.log(`[GAMBIARRA] Trades re-sincronizadas do Binance`);
+
+        this.logger.log(`[GAMBIARRA] Resync completo concluído para ${userId}`);
+      } catch (resynError) {
+        this.logger.error(
+          `[GAMBIARRA] Erro durante resync: ${resynError.message}`,
+          resynError.stack,
+        );
+        // Não propaga - a ordem já foi executada com sucesso
       }
 
       return {
