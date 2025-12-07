@@ -88,21 +88,21 @@ export class TradeDto {
     description: 'Timestamp de quando a trade foi executada (milissegundos)',
     format: 'date-time',
   })
-  executedTime: Date;
+  executedTime: string;
 
   @ApiProperty({
     example: '2025-11-17T23:30:00.000Z',
     description: 'Última sincronização com a Binance',
     format: 'date-time',
   })
-  lastSyncAt: Date;
+  lastSyncAt: string;
 
   @ApiProperty({
     example: '2025-11-17T23:30:00.000Z',
     description: 'Data de criação do registro',
     format: 'date-time',
   })
-  createdAt: Date;
+  createdAt: string;
 }
 
 export class SyncTradesResponse {

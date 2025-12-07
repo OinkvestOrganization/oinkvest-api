@@ -311,6 +311,15 @@ export class TradeService {
         quantity: trade.quantity.toString(),
         quoteQuantity: trade.quoteQuantity.toString(),
         commission: trade.commission.toString(),
+        executedTime: trade.executedTime
+          ? new Date(trade.executedTime).toISOString()
+          : '',
+        lastSyncAt: trade.lastSyncAt
+          ? new Date(trade.lastSyncAt).toISOString()
+          : '',
+        createdAt: trade.createdAt
+          ? new Date(trade.createdAt).toISOString()
+          : '',
       }));
 
       return {
