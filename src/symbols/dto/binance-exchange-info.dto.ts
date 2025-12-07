@@ -4,6 +4,7 @@ export interface BinanceSymbol {
   baseAsset: string;
   quoteAsset: string;
   permissions: string[];
+  stepSize?: string; // LOT_SIZE.stepSize
 }
 
 export interface BinanceExchangeInfo {

@@ -31,11 +31,24 @@ export class SymbolsService {
 
       const symbols = (data as any).symbols
         .filter((symbol: BinanceSymbol) => symbol.status === 'TRADING')
-        .map((symbol: BinanceSymbol) => ({
-          symbol: symbol.symbol,
-          baseAsset: symbol.baseAsset,
-          quoteAsset: symbol.quoteAsset,
-        }));
+        .map((symbol: BinanceSymbol) => {
+          // Extrai stepSize do filtro LOT_SIZE
+          let stepSize = '1';
+          const filters = (symbol as any).filters || [];
+          const lotSizeFilter = filters.find(
+            (f: any) => f.filterType === 'LOT_SIZE',
+          );
+          if (lotSizeFilter && lotSizeFilter.stepSize) {
+            stepSize = lotSizeFilter.stepSize;
+          }
+
+          return {
+            symbol: symbol.symbol,
+            baseAsset: symbol.baseAsset,
+            quoteAsset: symbol.quoteAsset,
+            stepSize: stepSize,
+          };
+        });
 
       const spotPairs: BinanceExchangeInfo = { symbols };
 
