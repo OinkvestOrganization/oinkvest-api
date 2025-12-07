@@ -21,9 +21,6 @@ export class OwnerGuard implements CanActivate {
       return false;
     }
 
-    console.log(`user id no token: ${user.userId}`);
-    console.log(`param id: ${paramId}`);
-
     if (user.userId !== paramId) {
       throw new ForbiddenException(
         'Você não tem permissão para acessar este recurso.',
