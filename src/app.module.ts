@@ -13,6 +13,7 @@ import { WalletModule } from './wallet/wallet.module';
 import { TradeModule } from './trade/trade.module';
 import { SymbolsModule } from './symbols/symbols.module';
 import { ProfileModule } from './profile/profile.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ProfileModule } from './profile/profile.module';
     TradeModule,
     SymbolsModule,
     ProfileModule,
+    AiModule,
   ],
 })
 export class AppModule {}
