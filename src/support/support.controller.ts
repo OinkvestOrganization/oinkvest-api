@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Req, UseGuards, HttpStatus, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  UseGuards,
+  HttpStatus,
+  Res,
+} from '@nestjs/common';
 import express from 'express';
 import { JwtAuthGuard } from '@/auth/guard/jwt-auth.guard';
 import { AuthRequest } from '@/auth/dto/AuthRequest';
@@ -14,15 +22,17 @@ export class SupportController {
   async sendSupportEmail(
     @Req() req: AuthRequest,
     @Body() data: CreateSupportDto,
-    @Res() res: express.Response
+    @Res() res: express.Response,
   ) {
     await this.emailService.sendSupportTicket(
       req.user.email,
       req.user.nome,
       data.subject,
-      data.message
+      data.message,
     );
 
-    return res.status(HttpStatus.OK).json({ message: 'E-mail enviado com sucesso.' });
+    return res
+      .status(HttpStatus.OK)
+      .json({ message: 'E-mail enviado com sucesso.' });
   }
 }

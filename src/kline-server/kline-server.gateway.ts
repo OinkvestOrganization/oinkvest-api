@@ -15,7 +15,13 @@ import KlineSubscriptionDto from './dto/klineSubscription.dto';
 import { AsyncApiOperation, AsyncApiPub, AsyncApiSub } from 'nestjs-asyncapi';
 import { KlineDto } from './dto/kline.dto';
 
-@WebSocketGateway({ cors: { origin: process.env.NESTJS_CORS_ORIGIN } })
+const corsOrigins = (process.env.NESTJS_CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim());
+
+@WebSocketGateway({
+  cors: { origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins },
+})
 export class KlineServerGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {

@@ -8,9 +8,13 @@ import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const corsOrigins = (process.env.NESTJS_CORS_ORIGIN || 'http://localhost:3000').split(',').map(origin => origin.trim());
+  const corsOrigins = (
+    process.env.NESTJS_CORS_ORIGIN || 'http://localhost:3000'
+  )
+    .split(',')
+    .map((origin) => origin.trim());
   app.enableCors({
-    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,    
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
   });
   app.use(cookieParser());
@@ -38,6 +42,6 @@ async function bootstrap() {
   const asyncapiDocument = AsyncApiModule.createDocument(app, asyncApiOptions);
   await AsyncApiModule.setup('/asyncapi', app, asyncapiDocument);
 
-  await app.listen(process.env.NESTJS_PORT ?? 3001);
+  await app.listen(3001);
 }
 void bootstrap();
