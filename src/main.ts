@@ -9,7 +9,7 @@ import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.NESTJS_CORS_ORIGIN,
     credentials: true,
   });
   app.use(cookieParser());
@@ -37,6 +37,6 @@ async function bootstrap() {
   const asyncapiDocument = AsyncApiModule.createDocument(app, asyncApiOptions);
   await AsyncApiModule.setup('/asyncapi', app, asyncapiDocument);
 
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(process.env.NESTJS_PORT ?? 3001);
 }
 void bootstrap();

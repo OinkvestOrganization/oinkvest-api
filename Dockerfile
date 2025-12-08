@@ -22,7 +22,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Imagem de produção
-FROM node:22.18 AS production
+FROM node:22.19 AS production
 
 # Instala o cliente do PostgreSQL
 RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*

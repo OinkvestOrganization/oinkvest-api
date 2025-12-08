@@ -15,7 +15,7 @@ import KlineSubscriptionDto from './dto/klineSubscription.dto';
 import { AsyncApiOperation, AsyncApiPub, AsyncApiSub } from 'nestjs-asyncapi';
 import { KlineDto } from './dto/kline.dto';
 
-@WebSocketGateway({ cors: { origin: process.env.CORS_ORIGIN } })
+@WebSocketGateway({ cors: { origin: process.env.NESTJS_CORS_ORIGIN } })
 export class KlineServerGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
