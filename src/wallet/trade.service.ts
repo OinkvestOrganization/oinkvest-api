@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CryptoUtil } from '../common/utils/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { BinanceRestClientService } from '../binance/binance-rest-client.service';
@@ -71,75 +76,71 @@ export class TradeService {
     let lastTradeTime: Date | undefined = undefined;
 
     while (hasMore) {
-      try {
-        const params: Record<string, any> = {
-          symbol: symbol.toUpperCase(),
-          limit: 1000, // máximo permitido pela Binance
-        };
+      const params: Record<string, any> = {
+        symbol: symbol.toUpperCase(),
+        limit: 1000, // máximo permitido pela Binance
+      };
 
-        if (fromId) {
-          params.fromId = fromId;
-        }
+      if (fromId) {
+        params.fromId = fromId;
+      }
 
-        const trades = await this.binanceClient.signedGet<BinanceTrade[]>(
-          '/api/v3/myTrades',
-          apiKey,
-          apiSecret,
-          params,
-        );
+      const trades = await this.binanceClient.signedGet<BinanceTrade[]>(
+        '/api/v3/myTrades',
+        apiKey,
+        apiSecret,
+        params,
+      );
 
-        if (!trades || trades.length === 0) {
-          hasMore = false;
-          break;
-        }
+      if (!trades || trades.length === 0) {
+        hasMore = false;
+        break;
+      }
 
-        // Processa as trades em lote
-        const tradesToInsert = trades.map((trade) => ({
-          userId,
-          symbol: trade.symbol,
-          tradeId: BigInt(trade.id),
-          orderId: BigInt(trade.orderId),
-          orderListId: BigInt(trade.orderListId),
-          price: new Decimal(trade.price),
-          quantity: new Decimal(trade.qty),
-          quoteQuantity: new Decimal(trade.quoteQty),
-          commission: new Decimal(trade.commission),
-          commissionAsset: trade.commissionAsset,
-          isBuyer: trade.isBuyer,
-          isMaker: trade.isMaker,
-          isBestMatch: trade.isBestMatch,
-          executedTime: new Date(trade.time),
-        }));
+      // Processa as trades em lote
+      const tradesToInsert = trades.map((trade) => ({
+        userId,
+        symbol: trade.symbol,
+        tradeId: BigInt(trade.id),
+        orderId: BigInt(trade.orderId),
+        orderListId: BigInt(trade.orderListId),
+        price: new Decimal(trade.price),
+        quantity: new Decimal(trade.qty),
+        quoteQuantity: new Decimal(trade.quoteQty),
+        commission: new Decimal(trade.commission),
+        commissionAsset: trade.commissionAsset,
+        isBuyer: trade.isBuyer,
+        isMaker: trade.isMaker,
+        isBestMatch: trade.isBestMatch,
+        executedTime: new Date(trade.time),
+      }));
 
-        // Upsert para não duplicar trades
-        for (const trade of tradesToInsert) {
-          await this.prisma.trade.upsert({
-            where: {
-              userId_symbol_tradeId: {
-                userId,
-                symbol: trade.symbol,
-                tradeId: trade.tradeId,
-              },
+      // Upsert para não duplicar trades
+      for (const trade of tradesToInsert) {
+        await this.prisma.trade.upsert({
+          where: {
+            userId_symbol_tradeId: {
+              userId,
+              symbol: trade.symbol,
+              tradeId: trade.tradeId,
             },
-            create: trade,
-            update: {
-              lastSyncAt: new Date(),
-            },
-          });
-        }
+          },
+          create: trade,
+          update: {
+            lastSyncAt: new Date(),
+          },
+        });
+      }
 
-        totalSynced += trades.length;
-        lastTradeTime = new Date(trades[trades.length - 1].time);
+      totalSynced += trades.length;
+      lastTradeTime = new Date(trades[trades.length - 1].time);
 
-        // Atualiza o fromId para a próxima paginação
-        fromId = trades[trades.length - 1].id;
+      // Atualiza o fromId para a próxima paginação
+      fromId = trades[trades.length - 1].id;
 
-        // Se recebeu menos de 1000 trades, não há mais dados
-        if (trades.length < 1000) {
-          hasMore = false;
-        }
-      } catch (error) {
-        throw error;
+      // Se recebeu menos de 1000 trades, não há mais dados
+      if (trades.length < 1000) {
+        hasMore = false;
       }
     }
 
@@ -194,86 +195,144 @@ export class TradeService {
       sortOrder = 'DESC',
     } = query;
 
-    // Validações
     if (limit > 500) {
-      throw new Error('Limite máximo de 500 registros por página');
+      throw new BadRequestException(
+        'Limite máximo de 500 registros por página',
+      );
+    }
+
+    if (page < 1) {
+      throw new BadRequestException('Página deve ser maior que 0');
     }
 
     // Construir filtros
-    const where: any = { userId, symbol };
+    const where: any = { userId };
+
+    // Se symbol foi fornecido, filtrar por ele
+    if (symbol) {
+      where.symbol = symbol.toUpperCase();
+    }
 
     // Filtro de data
     if (startDate || endDate) {
       where.executedTime = {};
-      if (startDate) {
-        where.executedTime.gte = new Date(startDate);
-      }
-      if (endDate) {
-        const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999);
-        where.executedTime.lte = endDateTime;
+      try {
+        if (startDate) {
+          const start = new Date(startDate);
+          if (isNaN(start.getTime())) {
+            throw new Error('Data inicial inválida');
+          }
+          start.setHours(0, 0, 0, 0);
+          where.executedTime.gte = start;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          if (isNaN(end.getTime())) {
+            throw new Error('Data final inválida');
+          }
+          end.setHours(23, 59, 59, 999);
+          where.executedTime.lte = end;
+        }
+      } catch (error: any) {
+        throw new BadRequestException(
+          `Data inválida: ${error.message}. Use o formato YYYY-MM-DD`,
+        );
       }
     }
 
     // Filtro de tipo de operação
-    if (type === 'BUY') {
-      where.isBuyer = true;
-    } else if (type === 'SELL') {
-      where.isBuyer = false;
+    if (type && type !== 'ALL') {
+      where.isBuyer = type === 'BUY';
     }
 
-    // Contar total
-    const total = await this.prisma.trade.count({ where });
+    try {
+      // Contar total
+      const total = await this.prisma.trade.count({ where });
 
-    // Calcular skip
-    const skip = (page - 1) * limit;
-    const pages = Math.ceil(total / limit);
+      // Se nenhuma trade encontrada
+      if (total === 0) {
+        return {
+          data: [],
+          page,
+          limit,
+          total: 0,
+          pages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        };
+      }
 
-    // Buscar dados
-    const trades = await this.prisma.trade.findMany({
-      where,
-      orderBy: { executedTime: sortOrder === 'ASC' ? 'asc' : 'desc' },
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        symbol: true,
-        tradeId: true,
-        orderId: true,
-        price: true,
-        quantity: true,
-        quoteQuantity: true,
-        commission: true,
-        commissionAsset: true,
-        isBuyer: true,
-        isMaker: true,
-        isBestMatch: true,
-        executedTime: true,
-        lastSyncAt: true,
-        createdAt: true,
-      },
-    });
+      // Calcular skip
+      const skip = (page - 1) * limit;
+      const pages = Math.ceil(total / limit);
 
-    // Converter bigint para string
-    const formattedTrades = trades.map((trade) => ({
-      ...trade,
-      tradeId: trade.tradeId.toString(),
-      orderId: trade.orderId.toString(),
-      price: trade.price.toString(),
-      quantity: trade.quantity.toString(),
-      quoteQuantity: trade.quoteQuantity.toString(),
-      commission: trade.commission.toString(),
-    }));
+      // Validar página
+      if (page > pages) {
+        throw new BadRequestException(
+          `Página ${page} não existe. Total de páginas: ${pages}`,
+        );
+      }
 
-    return {
-      data: formattedTrades,
-      page,
-      limit,
-      total,
-      pages,
-      hasNextPage: page < pages,
-      hasPrevPage: page > 1,
-    };
+      // Buscar dados
+      const trades = await this.prisma.trade.findMany({
+        where,
+        orderBy: { executedTime: sortOrder === 'ASC' ? 'asc' : 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          symbol: true,
+          tradeId: true,
+          orderId: true,
+          price: true,
+          quantity: true,
+          quoteQuantity: true,
+          commission: true,
+          commissionAsset: true,
+          isBuyer: true,
+          isMaker: true,
+          isBestMatch: true,
+          executedTime: true,
+          lastSyncAt: true,
+          createdAt: true,
+        },
+      });
+
+      // Converter bigint para string e Decimal para string
+      const formattedTrades = trades.map((trade) => ({
+        ...trade,
+        tradeId: trade.tradeId.toString(),
+        orderId: trade.orderId.toString(),
+        price: trade.price.toString(),
+        quantity: trade.quantity.toString(),
+        quoteQuantity: trade.quoteQuantity.toString(),
+        commission: trade.commission.toString(),
+        executedTime: trade.executedTime
+          ? new Date(trade.executedTime).toISOString()
+          : '',
+        lastSyncAt: trade.lastSyncAt
+          ? new Date(trade.lastSyncAt).toISOString()
+          : '',
+        createdAt: trade.createdAt
+          ? new Date(trade.createdAt).toISOString()
+          : '',
+      }));
+
+      return {
+        data: formattedTrades,
+        page,
+        limit,
+        total,
+        pages,
+        hasNextPage: page < pages,
+        hasPrevPage: page > 1,
+      };
+    } catch (error: any) {
+      this.logger.error(`Erro ao listar trades: ${error.message}`, error.stack);
+      throw new BadRequestException(
+        error.message || 'Erro ao buscar trades do banco de dados',
+      );
+    }
   }
 
   /**
@@ -336,28 +395,24 @@ export class TradeService {
    * com saldo diferente de zero
    */
   async getWalletAssetSymbols(userId: string): Promise<string[]> {
-    try {
-      // Buscar todos os ativos com saldo > 0 na WalletBalance
-      const balances = await this.prisma.walletBalance.findMany({
-        where: {
-          userId,
-          total: { gt: new Decimal(0) }, // Apenas ativos com saldo > 0
-        },
-        select: { asset: true },
-        orderBy: { asset: 'asc' },
-      });
+    // Buscar todos os ativos com saldo > 0 na WalletBalance
+    const balances = await this.prisma.walletBalance.findMany({
+      where: {
+        userId,
+        total: { gt: new Decimal(0) }, // Apenas ativos com saldo > 0
+      },
+      select: { asset: true },
+      orderBy: { asset: 'asc' },
+    });
 
-      if (balances.length === 0) {
-        return [];
-      }
-
-      // Converter assets em símbolos USDT (ex: BTC -> BTCUSDT, ETH -> ETHUSDT)
-      const symbols = balances.map((b) => `${b.asset}USDT`);
-
-      return symbols;
-    } catch (error) {
-      throw error;
+    if (balances.length === 0) {
+      return [];
     }
+
+    // Converter assets em símbolos USDT (ex: BTC -> BTCUSDT, ETH -> ETHUSDT)
+    const symbols = balances.map((b) => `${b.asset}USDT`);
+
+    return symbols;
   }
 
   /**
@@ -374,37 +429,31 @@ export class TradeService {
       throw new NotFoundException('Credenciais da Binance não encontradas');
     }
 
-    try {
-      // Usar HttpService diretamente para chamadas públicas
-      const response = await fetch(
-        'https://api.binance.com/api/v3/exchangeInfo',
-      );
-      if (!response.ok) {
-        throw new Error(`Falha ao obter exchange info: ${response.status}`);
-      }
-
-      const exchangeInfo = await response.json();
-
-      if (!exchangeInfo || !exchangeInfo.symbols) {
-        throw new Error('Falha ao obter informações da exchange');
-      }
-
-      // Obter TODOS os símbolos USDT disponíveis para Spot Trading
-      const usdtSymbols = exchangeInfo.symbols
-        .filter(
-          (s: any) =>
-            s.status === 'TRADING' &&
-            s.baseAsset &&
-            s.quoteAsset === 'USDT' &&
-            !s.baseAsset.startsWith('LD') &&
-            !s.baseAsset.startsWith('ST'), // Exclude staking tokens
-        )
-        .map((s: any) => s.symbol);
-
-      return usdtSymbols;
-    } catch (error) {
-      throw error;
+    // Usar HttpService diretamente para chamadas públicas
+    const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+    if (!response.ok) {
+      throw new Error(`Falha ao obter exchange info: ${response.status}`);
     }
+
+    const exchangeInfo = await response.json();
+
+    if (!exchangeInfo || !exchangeInfo.symbols) {
+      throw new Error('Falha ao obter informações da exchange');
+    }
+
+    // Obter TODOS os símbolos USDT disponíveis para Spot Trading
+    const usdtSymbols = exchangeInfo.symbols
+      .filter(
+        (s: any) =>
+          s.status === 'TRADING' &&
+          s.baseAsset &&
+          s.quoteAsset === 'USDT' &&
+          !s.baseAsset.startsWith('LD') &&
+          !s.baseAsset.startsWith('ST'), // Exclude staking tokens
+      )
+      .map((s: any) => s.symbol);
+
+    return usdtSymbols;
   }
 
   /**
@@ -419,12 +468,7 @@ export class TradeService {
     const skipSymbols = new Set(options?.skipSymbols || []);
 
     // Obter apenas os símbolos da carteira com saldo > 0
-    let symbolsWithBalance: string[];
-    try {
-      symbolsWithBalance = await this.getWalletAssetSymbols(userId);
-    } catch (error) {
-      throw error;
-    }
+    const symbolsWithBalance = await this.getWalletAssetSymbols(userId);
 
     if (symbolsWithBalance.length === 0) {
       return {
@@ -482,12 +526,7 @@ export class TradeService {
     const skipSymbols = new Set(options?.skipSymbols || []);
 
     // Descobrir TODOS os símbolos USDT da exchange (AVISO: pode ser muitos!)
-    let allSymbols: string[];
-    try {
-      allSymbols = await this.discoverUserSymbols(userId);
-    } catch (error) {
-      throw error;
-    }
+    const allSymbols = await this.discoverUserSymbols(userId);
 
     // Sincronizar TODOS os símbolos encontrados (sem limite)
     const symbolsToSync = allSymbols.filter((s) => !skipSymbols.has(s));
