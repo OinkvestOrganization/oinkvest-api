@@ -8,8 +8,9 @@ import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const corsOrigins = (process.env.NESTJS_CORS_ORIGIN || 'http://localhost:3000').split(',').map(origin => origin.trim());
   app.enableCors({
-    origin: process.env.NESTJS_CORS_ORIGIN,
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,    
     credentials: true,
   });
   app.use(cookieParser());
