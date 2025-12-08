@@ -49,31 +49,44 @@ export class OpenAiProvider implements AiProviderInterface {
 
       const content = response.data.choices[0].message.content;
 
-      const cleanContent = content
-        .replace(/^```json\s*/, '')
-        .replace(/^```\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
       try {
-        return JSON.parse(cleanContent);
+        // 1. Limpeza básica de Markdown (```json ... ```)
+        const simpleClean = content
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        return JSON.parse(simpleClean);
       } catch {
-        // Fallback: Tenta encontrar o JSON no meio do texto
-        const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+        // 2. Fallback com REGEX: Procura JSON "escondido" no texto
+
+        // Tenta achar um Array [...]
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          return JSON.parse(arrayMatch[0]);
         }
 
-        console.error('Falha ao parsear JSON da OpenAI:', cleanContent);
-        return {
-          message: 'Oink! Tive um problema técnico. Tente novamente! 🐽',
-        };
+        // Tenta achar um Objeto {...}
+        const objectMatch = content.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          return JSON.parse(objectMatch[0]);
+        }
+
+        // Se chegou aqui, o conteúdo é irrecuperável
+        this.logger.error('Falha crítica ao parsear JSON da OpenAI:', content);
+
+        // Retorna Array vazio ou objeto de erro para não quebrar o map() do front
+        return [];
       }
     } catch (error) {
-      this.logger.error(
-        'Error contacting OpenAI',
-        error.response?.data || error.message,
-      );
-      throw new Error('Failed to generate AI response');
+      if (error.response) {
+        this.logger.error(
+          'Erro API OpenAI:',
+          JSON.stringify(error.response.data),
+        );
+      } else {
+        this.logger.error('Erro Interno OpenAI:', error.message);
+      }
+      return [];
     }
   }
 }

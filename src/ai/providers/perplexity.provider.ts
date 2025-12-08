@@ -51,31 +51,51 @@ export class PerplexityProvider implements AiProviderInterface {
       // Tratamento para garantir que o retorno seja um objeto, caso a IA devolva texto
       const content = response.data.choices[0].message.content;
 
-      const cleanContent = content
-        .replace(/^```json\s*/, '') // Remove o inicio ```json
-        .replace(/^```\s*/, '') // Remove o inicio ```
-        .replace(/\s*```$/, '') // Remove o final ```
-        .trim(); // Remove espaços em branco nas pontas
-
       try {
-        return JSON.parse(cleanContent);
+        // 1. Tenta limpar markdown básico e parsear direto
+        const simpleClean = content
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        return JSON.parse(simpleClean);
       } catch {
-        const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+        // 2. Se falhar, usa REGEX para encontrar o JSON "escondido" no texto
+
+        // Tenta achar um Array [...]
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          return JSON.parse(arrayMatch[0]);
         }
-        console.error('Falha ao parsear JSON da IA:', cleanContent);
-        return {
-          message:
-            'Oink! Recebi a resposta mas não consegui ler. Tente de novo! 🐽',
-        };
+
+        // Tenta achar um Objeto {...}
+        const objectMatch = content.match(/\{[\s\S]*\}/);
+        if (objectMatch) {
+          return JSON.parse(objectMatch[0]);
+        }
+
+        // Se chegou aqui, a IA não mandou JSON válido
+        console.error(
+          'Falha crítica ao parsear JSON da Perplexity. Conteúdo recebido:',
+          content,
+        );
+
+        // Retorna um fallback amigável para não quebrar o front
+        return [
+          {
+            id: 'error',
+            title: 'Indisponível no momento',
+            summary:
+              'A IA não conseguiu formatar os dados de opinião corretamente. Tente novamente em instantes.',
+            sentiment: 'neutral',
+          },
+        ];
       }
     } catch (error) {
       this.logger.error(
         'Error contacting Perplexity',
         error.response?.data || error.message,
       );
-      throw new Error('Failed to generate AI response');
+      return [];
     }
   }
 }

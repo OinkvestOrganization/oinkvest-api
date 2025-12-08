@@ -14,4 +14,14 @@ export class AiController {
   async getNews() {
     return this.aiService.getCryptoNews();
   }
+
+  @Get('trends')
+  async getTrends() {
+    return this.aiService.getMarketTrends();
+  }
+
+  @Get('opinions')
+  async getOpinions() {
+    return this.aiService.getExpertOpinions();
+  }
 }
