@@ -40,6 +40,8 @@ import { SupportModule } from './support/support.module';
     TradeModule,
     SymbolsModule,
     ProfileModule,
+    AiModule,
+    SupportModule,
   ],
 })
 export class AppModule {}
